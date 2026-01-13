@@ -1,0 +1,31 @@
+Directory 1D
+
+1D/f_1D_AggrMemory.m - MATLAB function for Particle Aggregation with Memory in 1D
+
+1D/run_1D_AggrMemory.m - MATLAB script to run a single instance of f_1D_AggrMemory.m
+
+1D/1D/MonteCarlo1D.m - MATLAB script to run a Monte Carlo simulation with  f_1D_AggrMemory.m
+
+1D/process1D.m - MATLAB script to process the data produced by MonteCarlo1D.m and generate plots
+
+
+Directory 2D
+
+2D/f_2D_AggrMemory.m - MATLAB function for Particle Aggregation with Memory in 2D
+
+2D/run_2D_AggrMemory.m - MATLAB script to run a single instance of f_2D_AggrMemory.m
+
+2D/MonteCarlo2D_K.m - MATLAB script to run a Monte Carlo simulation with f_2D_AggrMemory.m with K layers of memory
+
+2D/MonteCarlo2D.m - MATLAB script to iterate MonteCarlo2D_K.m in K
+
+2D/process2D.m - MATLAB script to process the data produced by MonteCarlo2D.m and generate plots
+
+2D/torusDistances.m - MATLAB function to calculate distances over a unit torus
+
+
+Directory meanfield
+
+meanfield/f_mean_field_1D_aggregation.m - MATLAB function to simulate the continuum Particle Aggregation Model in 1D
+
+meanfield/run_mean_field_1D.m - MATLAB script to run f_mean_field_1D_aggregation.m
