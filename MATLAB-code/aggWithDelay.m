@@ -47,8 +47,8 @@ function [xRec] = aggWithDelay(expParams)
 %           Should be logical (true or false).
 %       stepPlotMod - simulation plots the t-th step if the reminder of t 
 %           divided by stepRecMod is zero. The plots are shown in movie-like
-%           sense. Initial and last states are always plotted. 
-%           If stepRecMod = -1, then no other steps are plotted.
+%           sense. If stepPlotMod = -1, then only initial and last states 
+%           are plotted. If stepPlotMod = -2, then no states are plotted.
 
 fprintf("----------------------------------\n\n")
 fprintf("Initializing the experiment: Agregation with constant delay.\n\n")
@@ -161,7 +161,8 @@ else
 end
 
 % Setting step plot mod
-if ~isfield(expParams,"stepPlotMod") || ~isinteger(expParams.stepPlotMod) || ((expParams.stepPlotMod <= 0) && expParams.stepPlotMod ~= -1)
+if ~isfield(expParams,"stepPlotMod") || ~isinteger(expParams.stepPlotMod) || ...
+    ((expParams.stepPlotMod <= 0) && expParams.stepPlotMod ~= -1 && expParams.stepPlotMod ~= -2)
     stepPlotMod = 1;  % default step record mod
     fprintf("Setting step plot mod to %i.\n\n", stepPlotMod)
 else
@@ -198,7 +199,9 @@ fprintf("----------------------------------\n\n")
 fprintf("Starting the simulation.\n\n")
 
 % Plot of the initial simulation state.
-plotSimState()
+if stepPlotMod ~= -2
+    plotSimState()
+end
 
 % Simulate for t=1:T
 for t=1:T
@@ -247,7 +250,7 @@ for t=1:T
     end
 
     % Plot
-    if (~mod(t-1,stepPlotMod))
+    if stepPlotMod ~= -1 && (~mod(t,stepPlotMod))
         plotSimState()
     end
 end
@@ -275,6 +278,10 @@ xRec(:,:,end) = x;
 fprintf("----------------------------------\n\n")
 fprintf("Simulation finished.\n\n")
 
-plotAgg(x)
+if stepPlotMod ~= -2
+    fprintf("----------------------------------\n\n")
+    fprintf("Plotting agregation groups.\n\n")
+    plotAgg(x)
+end
 
 end
