@@ -19,6 +19,11 @@ switch d
     case 3
         epsilon = 2.3/sqrt(2*N);
         minpts = 9;
+
+        satDef = 0;
+        valDef = 0.3;
+        satSwap = 0.5;
+        valSwap = 0.5;
     otherwise
         error('Invalid number of dimensions. Only 1, 2, or 3 are supported.');
 end
@@ -39,9 +44,34 @@ switch d
     case 3
         max_idx = max(idx);
         hues = (idx + 1) ./ (max_idx + 1);
-        colors = hsv2rgb([hues, ones(N,2)]);
+        satsCode = repmat([satSwap;1],[round(max_idx/2),1]);
+        valsCode = repmat([1;valSwap],[round(max_idx/2),1]);
+        if mod(max_idx,2) == 1
+            satsCode = [satsCode;satSwap];
+            valsCode = [valsCode;1];
+        end
+        sats = idxMap(satsCode,satDef,idx);
+        vals = idxMap(valsCode,valDef,idx);
+        colors = hsv2rgb([hues, sats, vals]);
         scatter3(x(:,1),x(:,2),x(:,3),[],colors,'filled');
         getframe;
 end
+
+    function result = idxMap(code,default,idx)
+        result = zeros(length(idx),1);
+        for i = 1:length(idx)
+            setDefault = true;
+            for c = 1:length(code)
+                if idx(i) == c
+                    result(i) = code(c);
+                    setDefault = false;
+                    continue
+                end
+            end
+            if setDefault
+                result(i) = default;
+            end
+        end
+    end
 
 end
