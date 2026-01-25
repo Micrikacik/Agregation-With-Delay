@@ -89,7 +89,7 @@ else
 end
 
 % Setting initial history of positions
-if ~isfield(expParams,"xInitHist") || ~isfloat(expParams.xInitHist) || ~isequal(size(expParams.xInitHist),[N,d,steDelay])
+if ~isfield(expParams,"xInitHist") || ~isfloat(expParams.xInitHist) || ~isequal(size(expParams.xInitHist),[N,d,stepDelay])
     fprintf("Either no or wrong value for the matrix of initial history of positions 'xInitHist'.\n")
     xHist = repmat(x,[1,1,stepDelay]);  % default number of time steps
     fprintf("Initializing experiment with constant initial history.\n\n")
