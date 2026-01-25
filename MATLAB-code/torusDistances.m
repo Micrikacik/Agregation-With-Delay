@@ -1,6 +1,6 @@
 function D = torusDistances(varargin)
 % varargin - input either one matrix or two matrices
-% Input matrix is Nxd, all d coordinates of all N agents in [0,1]^d
+% x is Nxd, all d coordinates of all N agents in [0,1]^d
 % D is NxN symmetric distance matrix on the unit torus
 
 % Initialize the matrices

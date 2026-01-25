@@ -52,7 +52,8 @@ function [xRec] = aggWithDelay(expParams)
 %           are plotted. If stepPlotMod = -2, then no states are plotted.
 
 fprintf("----------------------------------\n\n")
-fprintf("Initializing the experiment: Agregation with constant delay.\n\n")
+
+fprintf("Initializing the experiment: Agregation with delay.\n\n")
 
 % Set or initialize experiment parameters
 
@@ -75,7 +76,7 @@ else
     fprintf("Step delay: %i.\n\n", stepDelay)
 end
 
-% Setting initial position
+% Setting initial positions
 if ~isfield(expParams,"x0") || ~isfloat(expParams.x0)
     fprintf("Either no or wrong value for the matrix of initial positions 'x0'.\n")
     fprintf("Searching for the input values for 'N' and 'd'.\n")
