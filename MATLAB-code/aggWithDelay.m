@@ -6,7 +6,8 @@ function [xRec] = aggWithDelay(expParams)
 %
 % INPUT :
 %   expParams - struct, which can contain following fields, if an important
-%       field is missing a default value is used
+%       field is missing a default value is used. If no input is required,
+%       set to '{}'.
 %
 %       POSSIBLE FIELDS:
 %       rngSeed - rng seed to replicate experiments.
@@ -77,14 +78,31 @@ end
 % Setting initial position
 if ~isfield(expParams,"x0") || ~isfloat(expParams.x0)
     fprintf("Either no or wrong value for the matrix of initial positions 'x0'.\n")
-    N = int16(500);                    % default number of particles
-    d = int16(2);                      % default dimension of the space
+    fprintf("Searching for the input values for 'N' and 'd'.\n")
+    fprintf('   |\n')
+    if ~isfield(expParams,"N") || ~isinteger(expParams.N)
+        fprintf("   Either no or wrong value for the number of agents 'N'.\n")
+        N = 500;                % default number of particles
+        fprintf("   Setting N = %i.\n", N);
+    else
+        N = single(expParams.N);
+        fprintf("   N = %i.\n", N)
+    end
+    if ~isfield(expParams,"d") || ~isinteger(expParams.d)
+        fprintf("   Either no or wrong value for the dimension 'd'.\n")
+        d = 2;                  % default dimension of the space
+        fprintf("   Setting d = %i.\n", d);
+    else
+        d = single(expParams.d);
+        fprintf("   d = %i.\n", d)
+    end
+    fprintf('   |\n')
     fprintf("Initializing random experiment with N = %i, d = %i.\n\n", N, d);
     x = rand(N, d);   % default initial positions
 else
     x = expParams.x0;
-    N = size(expParams.x0,1);
-    d = size(expParams.x0,2);
+    N = int16(size(expParams.x0,1));
+    d = int16(size(expParams.x0,2));
     fprintf("Matrix of initial positions accepted, N = %i, d = %i.\n\n", N, d)
 end
 
@@ -153,6 +171,7 @@ end
 
 % Setting step record mod
 if ~isfield(expParams,"stepRecMod") || ~isinteger(expParams.stepRecMod) || ((expParams.stepRecMod <= 0) && expParams.stepRecMod ~= -1)
+    fprintf("Either no or wrong value for the record mod.\n")
     stepRecMod = -1;  % default step record mod
     fprintf("Setting step record mod to %i.\n\n", stepRecMod)
 else
@@ -163,6 +182,7 @@ end
 % Setting step plot mod
 if ~isfield(expParams,"stepPlotMod") || ~isinteger(expParams.stepPlotMod) || ...
     ((expParams.stepPlotMod <= 0) && expParams.stepPlotMod ~= -1 && expParams.stepPlotMod ~= -2)
+    fprintf("Either no or wrong value for the step plot mod.\n")
     stepPlotMod = 1;  % default step record mod
     fprintf("Setting step plot mod to %i.\n\n", stepPlotMod)
 else
