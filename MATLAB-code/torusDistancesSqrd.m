@@ -1,7 +1,7 @@
-function D = torusDistances(varargin)
+function D = torusDistancesSqrd(varargin)
 % varargin - input either one matrix or two matrices
 % x is Nxd, all d coordinates of all N agents in [0,1]^d
-% D is NxN symmetric distance matrix on the unit torus
+% D is NxN symmetric distance squared matrix on the unit torus
 
 % Initialize the matrices
 % 3rd matrix dimension corresponds to the d-dim space coordinate axes
@@ -32,7 +32,7 @@ x_diff = min(x_diff, 1 - x_diff);
 %dy = min(dy, 1 - dy);
 
 % Euclidean distance
-D = sqrt(sum(x_diff.^2,3));
+D = sum(x_diff.^2,3);
 
 %D = sqrt(dx.^2 + dy.^2)
 end
