@@ -1,4 +1,9 @@
-function [] = plotAgg(x)
+function [] = plotAgg(x,theta)
+
+arguments
+    x
+    theta = zeros(size(x,1),1)
+end
 
 % Plots the agents and highligts agregation
 % Supports dimensions 1, 2, 3
@@ -11,7 +16,7 @@ d = size(x,2);
 %parameter setting for DBSCAN method
 switch d
     case 1
-        epsilon = 0.8/sqrt(2*N);
+        epsilon = 1/sqrt(2*N);
         minpts = 14;
     case 2
         epsilon = 1.3/sqrt(2*N);
@@ -36,7 +41,7 @@ idx = dbscan(dist,epsilon,minpts,'Distance','precomputed');
 
 switch d
     case 1
-        gscatter(x(:,1),ones(N,1).*0.5,idx);
+        gscatter(x(:,1),theta,idx);
         getframe;
     case 2
         gscatter(x(:,1),x(:,2),idx);

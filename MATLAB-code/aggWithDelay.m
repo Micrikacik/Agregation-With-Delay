@@ -39,12 +39,12 @@ function [xRec] = aggWithDelay(expParams)
 %               "None"
 %       stepRecMod (positive integer) - simulation records the t-th step if the reminder of t 
 %           divided by stepRecMod is zero. Last state is always recorded.
-%           If stepRecMod = -1, then no other steps are recorded. 
-%           If stepRecMod = 0, then initial and last states are recorded.
+%           If stepRecMod = 0, then only initial and last states are recorded.
+%           If stepRecMod = -1, then only the last state is recorded. 
 %       waitForConf (logical) - if true, then wait for user to start the simulation.
 %       stepPlotMod (positive integer) - simulation plots the t-th step if the reminder of t 
 %           divided by stepRecMod is zero. The plots are shown in movie-like sense. 
-%           If stepPlotMod = -1, then only initial and last states are plotted.
+%           If stepPlotMod = -1, then only the last state is plotted.
 %           If stepPlotMod = -2, then no states are plotted.
 
 fprintf("----------------------------------\n\n")
@@ -187,7 +187,7 @@ end
 if ~isfield(expParams,"stepPlotMod") || ~isinteger(expParams.stepPlotMod) || ...
     ((expParams.stepPlotMod <= 0) && expParams.stepPlotMod ~= -1 && expParams.stepPlotMod ~= -2)
     fprintf("Either no or wrong value for the step plot mod.\n")
-    stepPlotMod = 1;  % default step record mod
+    stepPlotMod = 1;  % default step plot mod
     fprintf("Setting step plot mod to %i.\n\n", stepPlotMod)
 else
     stepPlotMod = expParams.stepPlotMod;
@@ -228,10 +228,7 @@ end
 fprintf("----------------------------------\n\n")
 fprintf("Starting the simulation.\n\n")
 
-% Plot of the initial simulation state.
-if stepPlotMod ~= -2
-    plotSimState()
-end
+W_max = W(0);
 
 % Simulate for t=1:T
 for t=1:T
@@ -290,7 +287,7 @@ end
 function plotSimState()
     switch d
         case 1
-            scatter(x(:,1),ones(N,1).*0.5,'o'); 
+            scatter(x(:,1),theta ./ W_max,'o'); 
             axis([0 1 0 1]);
             getframe;
         case 2
@@ -310,10 +307,28 @@ xRec(:,:,end) = x;
 fprintf("----------------------------------\n\n")
 fprintf("Simulation finished.\n\n")
 
+figure(2)
+
 if stepPlotMod ~= -2
+    % We need to update theta for the last plot
+    switch delayType
+        case "Reaction"
+            D = torusDistances(xHist(:,:,histCoeff));
+        case "Transmission"
+            D = torusDistances(x,xHist(:,:,histCoeff));
+        case "Memory"
+            D = torusDistances(xHist(:,:,histCoeff),x);
+        case "None"
+            D = torusDistances(x);
+        otherwise
+            error('Invalid delay type.');
+    end
+    
+    theta = sum(W(D),2) / (N - 1);
+
     fprintf("----------------------------------\n\n")
     fprintf("Plotting agregation groups.\n\n")
-    plotAgg(x)
+    plotAgg(x,theta ./ W_max)
 end
 
 end
