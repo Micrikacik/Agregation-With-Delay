@@ -98,8 +98,8 @@ if ~isfield(expParams,"x0") || ~isfloat(expParams.x0)
     x = rand(N, d);   % default initial positions
 else
     x = expParams.x0;
-    N = int16(size(expParams.x0,1));
-    d = int16(size(expParams.x0,2));
+    N = size(expParams.x0,1);
+    d = size(expParams.x0,2);
     fprintf("Matrix of initial positions accepted, N = %i, d = %i.\n\n", N, d)
 end
 
@@ -136,7 +136,8 @@ end
 % Setting the handle of the weight function
 if ~isfield(expParams,"W") || ~isa(expParams.W,"function_handle")
     fprintf("Either no or wrong value for the handle of the weight function W.\n")
-    int_r = 3/sqrt(2*N);        % interaction radius
+    %int_r = 3/sqrt(2*N);        % interaction radius
+    int_r = 1/10.;        % interaction radius
     kappa = pi^(d/2.) / gamma(d / 2. + 1);  % volume of a unit d-ball
     W_norm = kappa * int_r^d;   % W_norm to normalize W
     W = @(D) (D <= int_r) ./ W_norm;    % default handle of the weight function
