@@ -10,20 +10,18 @@ function [xRec] = aggWithDelay(expParams)
 %       set to '{}'.
 %
 %       POSSIBLE FIELDS:
-%       rngSeed - rng seed to replicate experiments.
-%           Should be an integer.
-%       stepDelay - number of steps used to delay the simulation.
-%           Should be a nonnegative integer.
-%       x0 - matrix of initial positions.
+%       rngSeed (integer) - rng seed to replicate experiments.
+%       stepDelay (nonnegative integer) - number of steps used to delay the simulation.
+%       x0 (float matrix) - matrix of initial positions.
 %           x(i,:) - position (float vector) in [0,1]^d of the i-th agent.
-%       xInitHist - initial history of the matrix of positions used in
+%           Alternatively, instead of x0, set the dimension d and number of
+%           agent N.
+%       xInitHist (float matrix) - initial history of the matrix of positions used in
 %           calculation of the first few iterations.
 %           x(:,:,i) - position matrix i steps into the past, 
 %           where 1 <= i <= stepDelay.
-%       T - number of time steps.
-%           Should be a positive integer.
-%       dt - time step length.
-%           Should be a positive float.
+%       T (positive integer) - number of time steps.
+%       dt (positive float) - time step length.
 %       W - handle of the weight function .
 %           Should take the distance matrix D from torusDistance.m and return 
 %           a weight matrix corresponding to D.
@@ -33,24 +31,21 @@ function [xRec] = aggWithDelay(expParams)
 %       D - handle of the distance function.
 %           Should take the matrix of positions x and return a distance matrix
 %           which will be used as an input to W.
-%       delayType - type of the delay.
+%       delayType (string) - type of the delay.
 %           Should be on of the following strings:
 %               "Reaction"
 %               "Transmission"
 %               "Memory"
 %               "None"
-%       stepRecMod - simulation records the t-th step if the reminder of t 
+%       stepRecMod (positive integer) - simulation records the t-th step if the reminder of t 
 %           divided by stepRecMod is zero. Last state is always recorded.
-%           If stepRecMod = -1, then no other steps are
-%           recorded. If stepRecMod = -0, then initial and last states are
-%           recorded.
-%           Should be a positive integer.
-%       waitForConf - if true, then wait for user to start the simulation.
-%           Should be logical (true or false).
-%       stepPlotMod - simulation plots the t-th step if the reminder of t 
-%           divided by stepRecMod is zero. The plots are shown in movie-like
-%           sense. If stepPlotMod = -1, then only initial and last states 
-%           are plotted. If stepPlotMod = -2, then no states are plotted.
+%           If stepRecMod = -1, then no other steps are recorded. 
+%           If stepRecMod = 0, then initial and last states are recorded.
+%       waitForConf (logical) - if true, then wait for user to start the simulation.
+%       stepPlotMod (positive integer) - simulation plots the t-th step if the reminder of t 
+%           divided by stepRecMod is zero. The plots are shown in movie-like sense. 
+%           If stepPlotMod = -1, then only initial and last states are plotted.
+%           If stepPlotMod = -2, then no states are plotted.
 
 fprintf("----------------------------------\n\n")
 
@@ -171,6 +166,11 @@ else
     fprintf("Delay type: %s.\n\n", delayType)
 end
 
+% Forcing no delay
+if stepDelay == 0
+    delayType = "None";
+end
+
 % Setting step record mod
 if ~isfield(expParams,"stepRecMod") || ~isinteger(expParams.stepRecMod) || ... 
     (expParams.stepRecMod <= 0 && expParams.stepRecMod ~= 0 && expParams.stepRecMod ~= -1)
@@ -266,10 +266,12 @@ for t=1:T
     x = mod(x,1);
 
     % Update history of x
-    xHist(:,:,histCoeff) = x;
-    histCoeff = histCoeff - 1;
-    if histCoeff <= 0
-        histCoeff = stepDelay;
+    if delayType ~= "None"
+        xHist(:,:,histCoeff) = x;
+        histCoeff = histCoeff - 1;
+        if histCoeff <= 0
+            histCoeff = stepDelay;
+        end
     end
 
     % Record simulation state
