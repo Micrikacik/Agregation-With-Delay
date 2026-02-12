@@ -40,8 +40,9 @@ function [xRec] = aggWithDelay(expParams)
 %               "Memory"
 %               "None"
 %       stepRecMod - simulation records the t-th step if the reminder of t 
-%           divided by stepRecMod is zero. Initial and last states are
-%           always recorded. If stepRecMod = -1, then no other steps are
+%           divided by stepRecMod is zero. Last state is always recorded.
+%           If stepRecMod = -1, then no other steps are
+%           recorded. If stepRecMod = -0, then initial and last states are
 %           recorded.
 %           Should be a positive integer.
 %       waitForConf - if true, then wait for user to start the simulation.
@@ -171,7 +172,8 @@ else
 end
 
 % Setting step record mod
-if ~isfield(expParams,"stepRecMod") || ~isinteger(expParams.stepRecMod) || ((expParams.stepRecMod <= 0) && expParams.stepRecMod ~= -1)
+if ~isfield(expParams,"stepRecMod") || ~isinteger(expParams.stepRecMod) || ... 
+    (expParams.stepRecMod <= 0 && expParams.stepRecMod ~= 0 && expParams.stepRecMod ~= -1)
     fprintf("Either no or wrong value for the record mod.\n")
     stepRecMod = -1;  % default step record mod
     fprintf("Setting step record mod to %i.\n\n", stepRecMod)
@@ -198,15 +200,21 @@ histCoeff = stepDelay;
 % Set output variables
 % Decide the size of xRec
 recCount = 0;
-if stepRecMod ~= -1
+if stepRecMod > 0
     recCount = idivide(T, stepRecMod);
     if mod(T, stepRecMod) == 0
         recCount = recCount - 1;
     end
 end
-xRec = zeros([N,d,recCount + 2]);
-xRec(:,:,1) = x;
-recIndex = 2;
+% Do we record initial state
+if stepRecMod >= 0
+    xRec = zeros([N,d,recCount + 1]);
+    xRec(:,:,1) = x;
+    recIndex = 2;
+else
+    xRec = zeros([N,d,recCount + 1]);
+    recIndex = 1;
+end
 
 
 if ~isfield(expParams, "waitForConf") || expParams.waitForConf == true
@@ -271,7 +279,7 @@ for t=1:T
     end
 
     % Plot
-    if stepPlotMod ~= -1 && (~mod(t,stepPlotMod))
+    if stepPlotMod > 0 && (~mod(t,stepPlotMod))
         plotSimState()
     end
 end
