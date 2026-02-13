@@ -1,14 +1,14 @@
-function [] = plotAgg(x,theta)
+function [] = plotAgg(x, theta, dims)
 
 arguments
     x
     theta = zeros(size(x,1),1)
+    dims = ones(size(x,2),1)
 end
 
 % Plots the agents and highligts agregation
 % Supports dimensions 1, 2, 3
 
-N = size(x,1);
 d = size(x,2);
 
 %identify clusters:
@@ -16,13 +16,13 @@ d = size(x,2);
 %parameter setting for DBSCAN method
 switch d
     case 1
-        epsilon = 1/sqrt(2*N);
+        epsilon = 0.7/20;
         minpts = 14;
     case 2
-        epsilon = 1.3/sqrt(2*N);
+        epsilon = 1/20;
         minpts = 12;
     case 3
-        epsilon = 2.3/sqrt(2*N);
+        epsilon = 1.8/20;
         minpts = 9;
 
         satDef = 0;
@@ -34,7 +34,7 @@ switch d
 end
 
 %calculate distance over the torus
-dist = torusDistances(x);
+dist = torusDistances(x,x,dims);
         
 %identify clusters
 idx = dbscan(dist,epsilon,minpts,'Distance','precomputed');

@@ -1,38 +1,30 @@
-function D = torusDistances(varargin)
-% varargin - input either one matrix or two matrices
-% x is Nxd, all d coordinates of all N agents in [0,1]^d
-% D is NxN symmetric distance matrix on the unit torus
+function D = torusDistances(x_1,x_2,dims)
+% x_1, x_2 are Nxd, all d coordinates of all N agents in [0,1]^d
+% D will be NxN symmetric distance matrix on the torus with dimensions
+% defined by dims
+
+arguments
+    x_1 
+    x_2 = x_1
+    dims = ones(size(x_1,2),1)
+end
 
 % Initialize the matrices
 % 3rd matrix dimension corresponds to the d-dim space coordinate axes
 % 1st and 2nd correspond to the agents
-switch nargin
-    case 1
-        x_13(:,1,:) = varargin{1}(:,:);
-        x_23(1,:,:) = varargin{1}(:,:);
-    case 2
-        x_13(:,1,:) = varargin{1}(:,:);
-        x_23(1,:,:) = varargin{2}(:,:);
-    otherwise
-        error('Invalid number of input arguments.');
-end
-
-
+x_13(:,1,:) = x_1;
+x_23(1,:,:) = x_2;
 
 % Pairwise differences
 x_diff = abs(x_13 - x_23);
 
-%dx = abs(x(1,:).' - x(1,:));
-%dy = abs(x(2,:).' - x(2,:));
+% Transform the dimensions vector to use it for periodic distances
+b_mat(1,1,:) = dims;
 
-% apply periodic boundary conditions
-x_diff = min(x_diff, 1 - x_diff);
-
-%dx = min(dx, 1 - dx);
-%dy = min(dy, 1 - dy);
+% Apply periodic boundary conditions
+x_diff = min(x_diff, b_mat - x_diff);
 
 % Euclidean distance
 D = sqrt(sum(x_diff.^2,3));
 
-%D = sqrt(dx.^2 + dy.^2)
 end

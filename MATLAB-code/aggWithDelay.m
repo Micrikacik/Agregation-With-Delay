@@ -12,6 +12,11 @@ function [xRec] = aggWithDelay(expParams)
 %       POSSIBLE FIELDS:
 %       rngSeed (integer) - rng seed to replicate experiments.
 %       stepDelay (nonnegative integer) - number of steps used to delay the simulation.
+%       dims (float ROW vector) - dimensions of the simulation, i.e., dimensions
+%           of the box, in which the agents move.
+%           Thic row vector does NOT influence the parameter d, in fact, dims
+%           will be either truncated or filled up with 1, to match its
+%           length with d.
 %       x0 (float matrix) - matrix of initial positions.
 %           x(i,:) - position (float vector) in [0,1]^d of the i-th agent.
 %           Alternatively, instead of x0, set the dimension d and number of
@@ -51,10 +56,14 @@ fprintf("----------------------------------\n\n")
 
 fprintf("Initializing the experiment: Agregation with delay.\n\n")
 
+function result =  IsInteger(x)
+    result = isnumeric(x) && x == floor(x);
+end
+
 % Set or initialize experiment parameters
 
 % Setting rng seed for replicable experiment
-if ~isfield(expParams,"rngSeed") || ~isinteger(expParams.rngSeed) || expParams.rngSeed < 0
+if ~isfield(expParams,"rngSeed") || ~IsInteger(expParams.rngSeed) || expParams.rngSeed < 0
     fprintf("Either no or wrong value for the rng seed 'rngSeed'.\n")
     fprintf("Randomness is uncontrolled.\n\n")
 else
@@ -63,7 +72,7 @@ else
 end
 
 % Setting step delay
-if ~isfield(expParams,"stepDelay") || ~isinteger(expParams.stepDelay) || expParams.stepDelay < 0
+if ~isfield(expParams,"stepDelay") || ~IsInteger(expParams.stepDelay) || expParams.stepDelay < 0
     fprintf("Either no or wrong value for the step delay 'stepDelay'.\n")
     stepDelay = int16(5);
     fprintf("Setting step delay to %i.\n\n", stepDelay)
@@ -73,19 +82,19 @@ else
 end
 
 % Setting initial positions
-if ~isfield(expParams,"x0") || ~isfloat(expParams.x0)
+if ~isfield(expParams,"x0") || ~isfloat(expParams.x0) || isempty(expParams.x0)
     fprintf("Either no or wrong value for the matrix of initial positions 'x0'.\n")
     fprintf("Searching for the input values for 'N' and 'd'.\n")
     fprintf('   |\n')
-    if ~isfield(expParams,"N") || ~isinteger(expParams.N)
+    if ~isfield(expParams,"N") || ~IsInteger(expParams.N)
         fprintf("   Either no or wrong value for the number of agents 'N'.\n")
-        N = 500;                % default number of particles
+        N = 400;                % default number of particles
         fprintf("   Setting N = %i.\n", N);
     else
         N = single(expParams.N);
         fprintf("   N = %i.\n", N)
     end
-    if ~isfield(expParams,"d") || ~isinteger(expParams.d)
+    if ~isfield(expParams,"d") || ~IsInteger(expParams.d)
         fprintf("   Either no or wrong value for the dimension 'd'.\n")
         d = 2;                  % default dimension of the space
         fprintf("   Setting d = %i.\n", d);
@@ -95,7 +104,7 @@ if ~isfield(expParams,"x0") || ~isfloat(expParams.x0)
     end
     fprintf('   |\n')
     fprintf("Initializing random experiment with N = %i, d = %i.\n\n", N, d);
-    x = rand(N, d);   % default initial positions
+    x = [];   % we will set the initial position later as a random matrix
 else
     x = expParams.x0;
     N = size(expParams.x0,1);
@@ -103,8 +112,38 @@ else
     fprintf("Matrix of initial positions accepted, N = %i, d = %i.\n\n", N, d)
 end
 
+% Setting dimensions
+if ~isfield(expParams,"dims") || ~isfloat(expParams.dims) || isempty(expParams.dims) || ...
+        (size(expParams.dims, 1) ~= 1 && size(expParams.dims, 2) ~= 1)
+    fprintf("Either no or wrong value for the vector of dimensions 'dims'.\n")
+    dims = ones(1,d);  % default number of time steps
+    fprintf("Setting all dimensions to 1.\n\n")
+else 
+    dims = expParams.dims;
+    % Making dims to be a row vector
+    if size(dims,2) == 1
+        dims = dims.';
+    end
+    % Resizing dims to match d
+    l = length(dims);
+    if l > d
+        dims = dims(1:d);
+    else 
+        if l < d
+            dims(l+1:d) = ones(d-l,1);
+        end
+    end
+    fprintf("dims = %.3d.\n\n", dims)
+end
+
+% Setting random initial positions
+if isempty(x)
+    x = rand(N, d) * diag(dims);
+end
+
 % Setting initial history of positions
-if ~isfield(expParams,"xInitHist") || ~isfloat(expParams.xInitHist) || ~isequal(size(expParams.xInitHist),[N,d,stepDelay])
+if ~isfield(expParams,"xInitHist") || ~isfloat(expParams.xInitHist) || ...
+        ~isequal(size(expParams.xInitHist),[N,d,stepDelay])
     fprintf("Either no or wrong value for the matrix of initial history of positions 'xInitHist'.\n")
     xHist = repmat(x,[1,1,stepDelay]);  % default number of time steps
     fprintf("Initializing experiment with constant initial history.\n\n")
@@ -114,9 +153,9 @@ else
 end
 
 % Setting step count
-if ~isfield(expParams,"T") || ~isinteger(expParams.T) || expParams.T <= 0
+if ~isfield(expParams,"T") || ~IsInteger(expParams.T) || expParams.T <= 0
     fprintf("Either no or wrong value for the number of time steps T.\n")
-    T = int16(300);                    % default number of time steps
+    T = 300;                    % default number of time steps
     fprintf("Setting T = %i.\n\n", T)
 else
     T = expParams.T;
@@ -173,8 +212,8 @@ if stepDelay == 0
 end
 
 % Setting step record mod
-if ~isfield(expParams,"stepRecMod") || ~isinteger(expParams.stepRecMod) || ... 
-    (expParams.stepRecMod <= 0 && expParams.stepRecMod ~= 0 && expParams.stepRecMod ~= -1)
+if ~isfield(expParams,"stepRecMod") || ~IsInteger(expParams.stepRecMod) || ... 
+        (expParams.stepRecMod <= 0 && expParams.stepRecMod ~= 0 && expParams.stepRecMod ~= -1)
     fprintf("Either no or wrong value for the record mod.\n")
     stepRecMod = -1;  % default step record mod
     fprintf("Setting step record mod to %i.\n\n", stepRecMod)
@@ -184,8 +223,8 @@ else
 end
 
 % Setting step plot mod
-if ~isfield(expParams,"stepPlotMod") || ~isinteger(expParams.stepPlotMod) || ...
-    ((expParams.stepPlotMod <= 0) && expParams.stepPlotMod ~= -1 && expParams.stepPlotMod ~= -2)
+if ~isfield(expParams,"stepPlotMod") || ~IsInteger(expParams.stepPlotMod) || ...
+        ((expParams.stepPlotMod <= 0) && expParams.stepPlotMod ~= -1 && expParams.stepPlotMod ~= -2)
     fprintf("Either no or wrong value for the step plot mod.\n")
     stepPlotMod = 1;  % default step plot mod
     fprintf("Setting step plot mod to %i.\n\n", stepPlotMod)
@@ -207,6 +246,7 @@ if stepRecMod > 0
         recCount = recCount - 1;
     end
 end
+
 % Do we record initial state
 if stepRecMod >= 0
     xRec = zeros([N,d,recCount + 1]);
@@ -228,7 +268,10 @@ end
 fprintf("----------------------------------\n\n")
 fprintf("Starting the simulation.\n\n")
 
+% Saving maximal values of W to normalize 1D graphs
 W_max = W(0);
+
+volume = prod(dims);
 
 % Simulate for t=1:T
 for t=1:T
@@ -237,19 +280,19 @@ for t=1:T
     % Delay is included by taking the last x from x_history
     switch delayType
         case "Reaction"
-            D = torusDistances(xHist(:,:,histCoeff));
+            D = torusDistances(xHist(:,:,histCoeff),xHist(:,:,histCoeff),dims);
         case "Transmission"
-            D = torusDistances(x,xHist(:,:,histCoeff));
+            D = torusDistances(x,xHist(:,:,histCoeff),dims);
         case "Memory"
-            D = torusDistances(xHist(:,:,histCoeff),x);
+            D = torusDistances(xHist(:,:,histCoeff),x,dims);
         case "None"
-            D = torusDistances(x);
+            D = torusDistances(x,x,dims);
         otherwise
             error('Invalid delay type.');
     end
     
     % Local density
-    theta = sum(W(D),2) / (N - 1);
+    theta = sum(W(D),2) / (N - 1) * volume; 
         
     % Diffusivity
     G_vals = G(theta);
@@ -261,7 +304,7 @@ for t=1:T
     x = x + sqrt(dt)*updt;
 
     % Periodic BCs
-    x = mod(x,1);
+    x = mod(x,dims);
 
     % Update history of x
     if delayType ~= "None"
@@ -287,16 +330,16 @@ end
 function plotSimState()
     switch d
         case 1
-            scatter(x(:,1),theta ./ W_max,'o'); 
-            axis([0 1 0 1]);
+            scatter(x(:,1),theta ./ (W_max * volume),'o'); 
+            axis([0 dims(1) 0 1]);
             getframe;
         case 2
             scatter(x(:,1),x(:,2),'o'); 
-            axis([0 1 0 1]);
+            axis([0 dims(1) 0 dims(2)]);
             getframe;
         case 3
             scatter3(x(:,1),x(:,2),x(:,3),'o'); 
-            axis([0 1 0 1 0 1]);
+            axis([0 dims(1) 0 dims(2) 0 dims(3)]);
             getframe;
     end
 end
@@ -307,19 +350,17 @@ xRec(:,:,end) = x;
 fprintf("----------------------------------\n\n")
 fprintf("Simulation finished.\n\n")
 
-figure(2)
-
 if stepPlotMod ~= -2
     % We need to update theta for the last plot
     switch delayType
         case "Reaction"
-            D = torusDistances(xHist(:,:,histCoeff));
+            D = torusDistances(xHist(:,:,histCoeff),xHist(:,:,histCoeff),dims);
         case "Transmission"
-            D = torusDistances(x,xHist(:,:,histCoeff));
+            D = torusDistances(x,xHist(:,:,histCoeff),dims);
         case "Memory"
-            D = torusDistances(xHist(:,:,histCoeff),x);
+            D = torusDistances(xHist(:,:,histCoeff),x,dims);
         case "None"
-            D = torusDistances(x);
+            D = torusDistances(x,x,dims);
         otherwise
             error('Invalid delay type.');
     end
@@ -328,7 +369,7 @@ if stepPlotMod ~= -2
 
     fprintf("----------------------------------\n\n")
     fprintf("Plotting agregation groups.\n\n")
-    plotAgg(x,theta ./ W_max)
+    plotAgg(x,theta ./ (W_max * volume), dims)
 end
 
 end
