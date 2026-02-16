@@ -414,7 +414,10 @@ end
 
 % Calculates local density from the ((partially) delayed) distance matrix D
 function theta = getTheta(D)
-    theta = sum(W(D),2) / N * volume;
+    theta = sum(W(D),2) / N * volume; 
+    % This means the model behaves similarly for constanc volume density of
+    % agents: N/volume, and at the same time behaves the same for different
+    % amount of agents in the same volume
 end
 
 % Record final simulation state
