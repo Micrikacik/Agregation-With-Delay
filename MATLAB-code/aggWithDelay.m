@@ -51,6 +51,11 @@ function [xRec] = aggWithDelay(expParams)
 %           divided by stepRecMod is zero. The plots are shown in movie-like sense. 
 %           If stepPlotMod = -1, then only the last state is plotted.
 %           If stepPlotMod = -2, then no states are plotted.
+%       boundConds (string) - type of the boundary conditions.
+%           Should be one of the following strings:
+%               "Periodic"
+%               "Bounce"
+%       expTitle (string) - title to be printed before the experiment begins
 
 fprintf("----------------------------------\n\n")
 
@@ -74,7 +79,7 @@ end
 % Setting step delay
 if ~isfield(expParams,"stepDelay") || ~IsInteger(expParams.stepDelay) || expParams.stepDelay < 0
     fprintf("Either no or wrong value for the step delay 'stepDelay'.\n")
-    stepDelay = int16(5);
+    stepDelay = 3;
     fprintf("Setting step delay to %i.\n\n", stepDelay)
 else
     stepDelay = expParams.stepDelay;
@@ -155,7 +160,7 @@ end
 % Setting step count
 if ~isfield(expParams,"T") || ~IsInteger(expParams.T) || expParams.T <= 0
     fprintf("Either no or wrong value for the number of time steps T.\n")
-    T = 300;                    % default number of time steps
+    T = 1000;                    % default number of time steps
     fprintf("Setting T = %i.\n\n", T)
 else
     T = expParams.T;
@@ -175,9 +180,9 @@ end
 % Setting the handle of the weight function
 if ~isfield(expParams,"W") || ~isa(expParams.W,"function_handle")
     fprintf("Either no or wrong value for the handle of the weight function W.\n")
-    %int_r = 3/sqrt(2*N);        % interaction radius
-    int_r = 1/10.;        % interaction radius
-    kappa = pi^(d/2.) / gamma(d / 2. + 1);  % volume of a unit d-ball
+    %int_r = 3/sqrt(2*N);       % interaction radius
+    int_r = 100^(-1/d);         % interaction radius
+    kappa = pi^(d/2) / gamma(d / 2 + 1);  % volume of a unit d-ball
     W_norm = kappa * int_r^d;   % W_norm to normalize W
     W = @(D) (D <= int_r) ./ W_norm;    % default handle of the weight function
     fprintf("Setting W = %s.\n\n", func2str(W))
@@ -226,12 +231,27 @@ end
 if ~isfield(expParams,"stepPlotMod") || ~IsInteger(expParams.stepPlotMod) || ...
         ((expParams.stepPlotMod <= 0) && expParams.stepPlotMod ~= -1 && expParams.stepPlotMod ~= -2)
     fprintf("Either no or wrong value for the step plot mod.\n")
-    stepPlotMod = 1;  % default step plot mod
+    stepPlotMod = 3;  % default step plot mod
     fprintf("Setting step plot mod to %i.\n\n", stepPlotMod)
 else
     stepPlotMod = expParams.stepPlotMod;
     fprintf("Step plot mod: %i.\n\n", stepPlotMod)
 end
+
+% Setting the boundary conditions
+if ~isfield(expParams,"boundConds") || ~isstring(expParams.boundConds)
+    fprintf("Either no or wrong value for the boundary conditions.\n")
+    boundConds = "Periodic";  % default boundary conditions
+    fprintf("Setting boundary conditions to %s.\n\n", boundConds)
+else
+    boundConds = expParams.boundConds;
+    fprintf("Boundary conditions: %s.\n\n", boundConds)
+end
+
+
+%---------------------------------------------------------------------------
+%---------------------------------------------------------------------------
+%---------------------------------------------------------------------------
 
 
 % Set auxiliary variables
@@ -266,7 +286,11 @@ end
 
 
 fprintf("----------------------------------\n\n")
-fprintf("Starting the simulation.\n\n")
+fprintf("Starting the simulation")
+if isfield(expParams,"expTitle") && isstring(expParams.expTitle)
+    fprintf(", title: %", expParams.expTitle)
+end
+fprintf(".\n\n")
 
 % Saving maximal values of W to normalize 1D graphs
 W_max = W(0);
@@ -275,24 +299,11 @@ volume = prod(dims);
 
 % Simulate for t=1:T
 for t=1:T
-    
-    % Calculate the distances (over the torus) between the agents
-    % Delay is included by taking the last x from x_history
-    switch delayType
-        case "Reaction"
-            D = torusDistances(xHist(:,:,histCoeff),xHist(:,:,histCoeff),dims);
-        case "Transmission"
-            D = torusDistances(x,xHist(:,:,histCoeff),dims);
-        case "Memory"
-            D = torusDistances(xHist(:,:,histCoeff),x,dims);
-        case "None"
-            D = torusDistances(x,x,dims);
-        otherwise
-            error('Invalid delay type.');
-    end
+    % Distance matrix
+    D = getDelayedDists(x,xHist,histCoeff);
     
     % Local density
-    theta = sum(W(D),2) / (N - 1) * volume; 
+    theta = getTheta(D);
         
     % Diffusivity
     G_vals = G(theta);
@@ -303,8 +314,15 @@ for t=1:T
     % Make one time step
     x = x + sqrt(dt)*updt;
 
-    % Periodic BCs
-    x = mod(x,dims);
+    switch boundConds
+        case "Periodic"
+            % Periodic BCs
+            x = mod(x,dims);
+        case "Bounce"
+            % Bounce BCs
+            x = abs(x);
+            x = dims - abs(dims - x);
+    end
 
     % Update history of x
     if delayType ~= "None"
@@ -315,19 +333,21 @@ for t=1:T
         end
     end
 
+    % Plot - to make correct 1D plot, we need current theta
+    if stepPlotMod > 0 && mod(t-1,stepPlotMod) == 0
+        D = getDists(x);
+        theta = getTheta(D);
+        plotSimState(theta)
+    end
+
     % Record simulation state
     if stepRecMod ~= -1 && mod(t,stepRecMod) == 0
         xRec(:,:,recIndex) = x;
         recIndex = recIndex + 1;
     end
-
-    % Plot
-    if stepPlotMod > 0 && (~mod(t,stepPlotMod))
-        plotSimState()
-    end
 end
 
-function plotSimState()
+function plotSimState(theta)
     switch d
         case 1
             scatter(x(:,1),theta ./ (W_max * volume),'o'); 
@@ -344,6 +364,59 @@ function plotSimState()
     end
 end
 
+
+% Calculates the distances between the agents with possible delay
+% Delay is included by taking the last x from x_history using histCoeff
+function D = getDelayedDists(x, xHist, histCoeff)
+    switch boundConds
+        case "Periodic"
+            % Distances on torus
+            switch delayType
+                case "Reaction"
+                    D = torusDistances(xHist(:,:,histCoeff),xHist(:,:,histCoeff),dims);
+                case "Transmission"
+                    D = torusDistances(x,xHist(:,:,histCoeff),dims);
+                case "Memory"
+                    D = torusDistances(xHist(:,:,histCoeff),x,dims);
+                case "None"
+                    D = torusDistances(x,x,dims);
+                otherwise
+                    error('Invalid delay type.');
+            end
+        case "Bounce"
+            % Normal distances
+            switch delayType
+                case "Reaction"
+                    D = distances(xHist(:,:,histCoeff),xHist(:,:,histCoeff));
+                case "Transmission"
+                    D = distances(x,xHist(:,:,histCoeff));
+                case "Memory"
+                    D = distances(xHist(:,:,histCoeff),x);
+                case "None"
+                    D = distances(x,x);
+                otherwise
+                    error('Invalid delay type.');
+            end
+    end
+end
+
+% Calculates the distances between the agents
+function D = getDists(x)
+    switch boundConds
+        case "Periodic"
+            % Distances on torus
+            D = torusDistances(x,x,dims);
+        case "Bounce"
+            % Normal distances
+            D = distances(x);
+    end
+end
+
+% Calculates local density from the ((partially) delayed) distance matrix D
+function theta = getTheta(D)
+    theta = sum(W(D),2) / N * volume;
+end
+
 % Record final simulation state
 xRec(:,:,end) = x;
 
@@ -352,24 +425,12 @@ fprintf("Simulation finished.\n\n")
 
 if stepPlotMod ~= -2
     % We need to update theta for the last plot
-    switch delayType
-        case "Reaction"
-            D = torusDistances(xHist(:,:,histCoeff),xHist(:,:,histCoeff),dims);
-        case "Transmission"
-            D = torusDistances(x,xHist(:,:,histCoeff),dims);
-        case "Memory"
-            D = torusDistances(xHist(:,:,histCoeff),x,dims);
-        case "None"
-            D = torusDistances(x,x,dims);
-        otherwise
-            error('Invalid delay type.');
-    end
-    
-    theta = sum(W(D),2) / (N - 1);
+    D = getDists(x);
+    theta = getTheta(D);
 
     fprintf("----------------------------------\n\n")
     fprintf("Plotting agregation groups.\n\n")
-    plotAgg(x,theta ./ (W_max * volume), dims)
+    plotAgg(x,theta ./ (W_max * volume), dims, boundConds)
 end
 
 end

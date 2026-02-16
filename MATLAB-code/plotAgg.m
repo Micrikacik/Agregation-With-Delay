@@ -1,9 +1,10 @@
-function [] = plotAgg(x, theta, dims)
+function [] = plotAgg(x, theta, dims, boundConds)
 
 arguments
     x
     theta = zeros(size(x,1),1)
     dims = ones(size(x,2),1)
+    boundConds = "Periodic"
 end
 
 % Plots the agents and highligts agregation
@@ -33,8 +34,15 @@ switch d
         error('Invalid number of dimensions. Only 1, 2, or 3 are supported.');
 end
 
-%calculate distance over the torus
-dist = torusDistances(x,x,dims);
+switch boundConds
+    case "Periodic"
+        %calculate distances over the torus
+        dist = torusDistances(x,x,dims);
+    case "Bounce"
+        %calculate distances
+        dist = distances(x);
+end
+
         
 %identify clusters
 idx = dbscan(dist,epsilon,minpts,'Distance','precomputed');
@@ -42,9 +50,11 @@ idx = dbscan(dist,epsilon,minpts,'Distance','precomputed');
 switch d
     case 1
         gscatter(x(:,1),theta,idx);
+        axis([0 dims(1) 0 1]);
         getframe;
     case 2
         gscatter(x(:,1),x(:,2),idx);
+        axis([0 dims(1) 0 dims(2)]);
         getframe;
     case 3
         max_idx = max(idx);
@@ -59,6 +69,7 @@ switch d
         vals = idxMap(valsCode,valDef,idx);
         colors = hsv2rgb([hues, sats, vals]);
         scatter3(x(:,1),x(:,2),x(:,3),[],colors,'filled');
+        axis([0 dims(1) 0 dims(2) 0 dims(3)]);
         getframe;
 end
 
