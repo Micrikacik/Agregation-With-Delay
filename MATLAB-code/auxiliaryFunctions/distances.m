@@ -4,7 +4,7 @@ function D = distances(x_1,x_2)
 
 arguments
     x_1 
-    x_2 = x_1
+    x_2 = x_1 
 end
 
 % Initialize the matrices

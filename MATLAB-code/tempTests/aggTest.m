@@ -24,7 +24,7 @@ end
 % 
 % fprintf("Experiments finished. \n")
 % 
-% save("testResults.mat","X","params")
+% save("tempTests/testResults.mat","X","params")
 
 %% Reaction test limit
 
@@ -63,7 +63,7 @@ end
 
 fprintf("Experiments finished. \n")
 
-save("radiusTestResults.mat","X","params")
+save("tempTests/radiusTestResults.mat","X","params")
 
 %% Compare larger box
 
@@ -89,7 +89,7 @@ X{1} = aggWithDelay(params{1});
 figure(2)
 X{2} = aggWithDelay(params{2});
 
-save("sizeTestResults.mat","X","params")
+save("tempTests/sizeTestResults.mat","X","params")
 
 %% Compare BCs
 
@@ -118,4 +118,4 @@ X{1} = aggWithDelay(params{1});
 figure(2)
 X{2} = aggWithDelay(params{2});
 
-save("BCsTestResults.mat","X","params")
+save("tempTests/BCsTestResults.mat","X","params")

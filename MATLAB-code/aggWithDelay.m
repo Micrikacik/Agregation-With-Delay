@@ -83,6 +83,8 @@ fprintf("----------------------------------\n\n")
 
 fprintf("Initializing the experiment: Agregation with delay.\n\n")
 
+addpath("auxiliaryFunctions\")
+
 fprintf("----------------------------------\n\n")
 
 function result =  IsInteger(x)
@@ -358,7 +360,7 @@ volume = prod(dims);
 % Simulate for t=1:T
 for t=1:T
     % Distance matrix
-    D = getDelayedDists(x,xHist(:,:,histCoeff));
+    D = getDelayedDists(x,xHist,histCoeff);
 
     % Update history of x before changing x
     if delayType ~= "None"
@@ -426,14 +428,14 @@ end
 % Calculates the distance matrix of the agents with (possible) delay
 % Delay is included by taking the last x from x_history using histCoeff
 % Takes into account boundary conditions
-function D = getDelayedDists(x, x_delayed)
+function D = getDelayedDists(x, xHist, histCoeff)
     switch delayType
         case "Reaction"
-            D = getDists(x_delayed,x_delayed);
+            D = getDists(xHist(:,:,histCoeff),xHist(:,:,histCoeff));
         case "Transmission"
-            D = getDists(x,x_delayed);
+            D = getDists(x,xHist(:,:,histCoeff));
         case "Memory"
-            D = getDists(x_delayed,x);
+            D = getDists(xHist(:,:,histCoeff),x);
         case "None"
             D = getDists(x,x);
         otherwise
