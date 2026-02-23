@@ -10,21 +10,23 @@ end
 % Plots the agents and highligts agregation
 % Supports dimensions 1, 2, 3
 
+N = size(x,1);
 d = size(x,2);
+volume = prod(dims);
 
 %identify clusters:
 
 %parameter setting for DBSCAN method
 switch d
     case 1
-        epsilon = 0.7/20;
-        minpts = 14;
+        %epsilon = 0.7/20;
+        %minpts = 14;
     case 2
-        epsilon = 1/20;
-        minpts = 12;
+        %epsilon = 1/20;
+        %minpts = 12;
     case 3
-        epsilon = 1.8/20;
-        minpts = 9;
+        %epsilon = 1.8/20;
+        %minpts = 9;
 
         satDef = 0;
         valDef = 0.3;
@@ -34,12 +36,17 @@ switch d
         error('Invalid number of dimensions. Only 1, 2, or 3 are supported.');
 end
 
+epsilon = 0.0025^(1/d);
+minpts = 12 * (N / volume / 400);
+
 switch boundConds
     case "Periodic"
         %calculate distances over the torus
         dist = torusDistances(x,x,dims);
-    case "Bounce"
+    case "Reflective"
         %calculate distances
+        dist = distances(x);
+    otherwise
         dist = distances(x);
 end
 

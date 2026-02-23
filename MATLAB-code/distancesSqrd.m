@@ -1,11 +1,10 @@
-function D = torusDistancesSqrd(x_1,x_2,dims)
+function D = distancesSqrd(x_1,x_2)
 % x_1, x_2 are Nxd, all d coordinates of all N agents in [0,1]^d
-% D will be NxN (symmetric) distance matrix on the torus
+% D will be NxN (symmetric) distance matrix
 
 arguments
     x_1 
     x_2 = x_1
-    dims = ones(size(x_1,2),1)
 end
 
 % Initialize the matrices
@@ -15,13 +14,7 @@ x_13(:,1,:) = x_1;
 x_23(1,:,:) = x_2;
 
 % Pairwise differences
-x_diff = abs(x_13 - x_23);
-
-% Transform the dimensions vector to use it for periodic distances
-b_mat(1,1,:) = dims;
-
-% Apply periodic boundary conditions
-x_diff = min(x_diff, b_mat - x_diff);
+x_diff = x_13 - x_23;
 
 % Euclidean distance
 D = sum(x_diff.^2,3);
