@@ -36,14 +36,18 @@ switch d
         error('Invalid number of dimensions. Only 1, 2, or 3 are supported.');
 end
 
-epsilon = 0.0025^(1/d);
+kappa_1 = 2;  % "volume" of a unit 1-ball
+kappa = pi^(d/2) / gamma(d / 2 + 1);  % volume of a unit d-ball
+intRad_1 = 0.05^2 / 2 * pi;
+intRad = (kappa_1 / kappa * intRad_1)^(1/d);         % interaction radius
+epsilon = intRad;
 minpts = 12 * (N / volume / 400);
 
 switch boundConds
     case "Periodic"
         %calculate distances over the torus
         dist = torusDistances(x,x,dims);
-    case "Reflective"
+    case "Ricochet"
         %calculate distances
         dist = distances(x);
     otherwise

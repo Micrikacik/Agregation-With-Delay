@@ -1,0 +1,216 @@
+\documentclass[11pt]{article}
+
+\usepackage{graphics,enumitem,epsfig,textcomp}
+\usepackage{amsfonts,amsmath,amssymb,amsthm}
+\usepackage{euscript,color,mathrsfs}
+\renewcommand{\topfraction}{.95}
+
+\usepackage{url}
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=blue,      
+    urlcolor=blue,
+    citecolor=blue,
+    }
+
+\usepackage[mathlines]{lineno}
+%\linenumbers
+
+%\usepackage[centering,includeheadfoot,margin=2.5 cm]{geometry}
+\usepackage[margin=1in]{geometry}
+%\usepackage[utf8]{inputenc}	
+%\usepackage[caption=false,subrefformat=parens,labelformat=parens]{subfig}
+%\usepackage[symbol]{footmisc}
+
+
+\bibliographystyle{plain}
+%\usepackage{biblatex}
+%\addbibresource{bibmemory.bib}
+
+%\usepackage[square,numbers]{natbib}
+
+
+
+%     +-----------------------------------------------------------+
+%     |    Sectionwise numbering of formulas, figures, theorems   |
+%     +-----------------------------------------------------------+
+\numberwithin{equation}{section}
+\newtheorem{defin}{Definition}%[section]
+\newtheorem{theorem}{Theorem}%[section]
+\newtheorem{notice}{Notice}
+\newtheorem{lemma}{Lemma}%[section]
+\newtheorem{proposition}{Proposition}%[section]
+\newtheorem{corollary}{Corollary}%[section]
+\newtheorem{example}{Example}%[section]
+\newtheorem{remark}{Remark}%[section]
+\newtheorem{conj}{Conjecture}
+\def\begproof{\noindent{\bf Proof: }}
+\def\endproof{\par\rightline{\vrule height5pt width5pt depth0pt}\medskip}
+%     +------------------+
+%     |     Operators    |
+%     +------------------+
+\def\div{\nabla\cdot}
+\def\diver{\div}
+\def\rot{\nabla\times}
+\def\sign{{\rm sign}}
+\def\arsinh{{\rm arsinh}}
+\def\arcosh{{\rm arcosh}}
+\def\diag{{\rm diag}}
+\def\const{{\rm const}}
+\def\d{\,\mathrm{d}}
+%     +-----------------------------------------+
+%     |      Redefinition of greek letters      |
+%     +-----------------------------------------+
+%\def\eps{\varepsilon}
+%\def\phi{\varphi}
+%\def\theta{\vartheta}
+%     +-------------------------------------------+
+%     |      The sets C, R, Q, M, N, P and Z      |
+%     +-------------------------------------------+
+\def\N{\mathbb{N}}
+\def\R{\mathbb{R}}
+\def\C{\hbox{\rlap{\kern.24em\raise.1ex\hbox
+      {\vrule height1.3ex width.9pt}}C}}
+\def\P{\hbox{\rlap{I}\kern.16em P}}
+\def\Q{\hbox{\rlap{\kern.24em\raise.1ex\hbox
+      {\vrule height1.3ex width.9pt}}Q}}
+\def\M{\hbox{\rlap{I}\kern.16em\rlap{I}M}}
+\def\Z{\hbox{\rlap{Z}\kern.20em Z}}
+%    +----------------+
+%    |    Equations   |
+%    +----------------+
+\def\({\begin{eqnarray}}
+\def\){\end{eqnarray}}
+\def\[{\begin{eqnarray*}}
+\def\]{\end{eqnarray*}}
+%   +---------------------------+
+%   |    Partial derivatives    |
+%   +---------------------------+
+\def\part#1#2{\frac{\partial #1}{\partial #2}}
+\def\partk#1#2#3{\frac{\partial^#3 #1}{\partial #2^#3}} 
+\def\mat#1{{D #1\over Dt}}
+\def\grad{\nabla}
+%   +-----------------------+
+%   |      Norms            |
+%   +-----------------------+
+\def\Norm#1{\left\| #1 \right\|}
+%   +-----------------------+
+%   |    Miscellaneous      |
+%   +-----------------------+
+\def\bar{\overline}
+\def\lbar{\underline}
+
+\def\tot#1#2{\frac{\d #1}{\d #2}} 
+\def\totk#1#2#3{{\frac{\d^#3 #1}{\d #2^#3}}}
+\def\laplace{\Delta}
+\def\d{\,\mathrm{d}}
+\def\N{\mathbb{N}}
+\def\R{\mathbb{R}}
+\def\T{\mathbb{T}}
+\def\supp{\mbox{supp }}
+\def\epsilon{\varepsilon}
+
+\def\d{\mathrm{d}}
+
+
+\def\comment#1{\textcolor{blue}{\bf [#1]}}
+
+\newcommand\sgn{\text{sgn}}
+
+\renewcommand{\thefootnote}{\fnsymbol{footnote}}
+
+\def\dol#1{\{1,\dots,#1\}}
+
+\usepackage{authblk}
+
+
+%\def\rev#1{\textcolor{blue}{#1}}
+\def\rev#1{#1}
+
+
+
+%\title{Long-term memory inhibits and short-term memory enhances spontaneous particle aggregation}
+\title{Spontaneous particle aggregation with delay}
+\date{}
+
+\pagenumbering{arabic}
+
+
+\begin{document}
+
+\maketitle
+
+\section{The original spontaneous aggregation model}
+
+\noindent
+The individual-based stochastic model introduced in reference~\cite{BHW:2012:PhysD}
+under the name `direct aggregation model' consists of a group of $N \ge 2$ biological agents (cells or animals),
+characterized by their positions ${\mathbf x}_i(t)\in\R^d$, with spatial dimension $d \in \{1,2,3\}$ and $i\in [N]$,
+where we have denoted the set of indices by $[N] := \{1,2,\ldots,N \}$. Every individual senses the average 
+density of its close neighbours, given by
+\begin{equation}   
+\label{theta_i}
+\vartheta_i(t) = \frac{1}{N-1} \sum_{j\neq i} W({\mathbf x}_i(t)-\mathbf{x}_j(t)) \,,\qquad \mbox{for} \quad i \in [N]\,,
+\end{equation}
+where $W({\mathbf x}) = w(|{\mathbf x}|)$ with the weight function $w: \R^+ \to \R^+$ assumed to be bounded, nonnegative, nonincreasing and
+integrable on $\R^d$. Without loss of generality we impose the normalization
+\begin{equation}  
+\label{eq:Wnorm}
+\int_{\R^d} W({\mathbf x}) \, \d {\mathbf x} = 1 \,. 
+\end{equation}
+A generic example of $w$ is the (properly normalized) characteristic function
+of the interval $[0,R]$, corresponding to the sampling radius $R > 0$.
+The average density $\vartheta_i$ is then simply the fraction
+of individuals located within the distance $R$ from the $i$-th individual.
+The individual positions are subject to a random walk with modulated amplitude,
+described by the system of coupled SDEs
+\begin{equation}
+\label{model1}
+\d {\mathbf x}_i(t) \,=\, G(\vartheta_i) \, \d {\mathbf B}_i^t \,,\qquad \mbox{for} \quad i \in [N]\,,
+\end{equation}
+where ${\mathbf B}_i^t$ are independent $d$-dimensional Brownian motions.
+The \emph{response function} $G:\R^+ \to\R^+$ is assumed to be globally bounded, nonnegative and decreasing.
+The monotonicity of $G$ is implied by the modeling assumption that the individuals respond to 
+higher perceived population densities in their vicinity by reducing the amplitude of 
+their random walk.
+
+
+\section{Spontaneous aggregation model with delay}
+\noindent
+
+From the modeling point of view it makes sense to consider two types of delay:
+
+\begin{itemize}
+\item
+\textbf{Transmission-type delay}, where we assume that there is non-negligible time
+for the transmission of information from agent $x_j$ to agent $x_i$.
+I.e., agent $i$ at time $t$ makes its decision based on the information about agent $j$
+that was actual at time $t-\tau$, where $\tau>0$ is the transmission delay.
+For simplicity we shall assume that $\tau>0$ is a global constant, taking the same value
+for all pairs of agents $i$, $j$.
+This means that formula \eqref{theta_i} is replaced by
+\begin{equation} 
+\label{theta_i_trans}
+   \vartheta_i(t) = \frac{1}{N-1} \sum_{j\neq i} W({\mathbf x}_i(t)-\mathbf{x}_j(t-\tau)) \,,\qquad \mbox{for} \quad i \in [N]\,.
+\end{equation}
+
+\item
+\textbf{Reaction-type delay}, where we assume that the information transmission is instantaneous
+(or, strictly speaking, the transmission delay is negligible),
+but the agents need a non-negligible time to carry out their actions.
+This means that agent $i$ at time $t$ reacts to the information $x_i-x_j$ that
+was actual at time $t-\tau$.
+In this case we replace formula \eqref{theta_i} by
+\begin{equation} 
+\label{theta_i_react}
+   \vartheta_i(t) = \frac{1}{N-1} \sum_{j\neq i} W({\mathbf x}_i(t-\tau)-\mathbf{x}_j(t-\tau)) \,,\qquad \mbox{for} \quad i \in [N]\,.
+\end{equation}
+\end{itemize}
+
+
+\bibliography{bibmemory}
+%\printbibliography 
+
+\end{document}

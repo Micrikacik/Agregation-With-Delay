@@ -1,10 +1,10 @@
-function [xRec, xHist, rngSetts] = aggWithDelay(expParams)
+function [xRec, thetaRec, xHist, rngSetts] = aggWithDelay(expParams)
 
 % Runs the discrete simulation of agregation with a constant delay.
 %
 %---------------------------------------------------------------------------
 %
-% INPUT :
+% INPUT:
 %   expParams - struct, which can contain following fields, if an important
 %       field is missing, default value is used. If no input is required,
 %       set to '{}'.
@@ -47,9 +47,9 @@ function [xRec, xHist, rngSetts] = aggWithDelay(expParams)
 %           where 1 <= i <= stepDelay.
 %
 %       MODEL:
-%       interRad (positive float) - radius of interactions between agents.
+%       intRad (positive float) - radius of interactions between agents.
 %       W (function handle) - handle of the weight function. If a change of
-%           the interaction radius is desired, use 'interRad' field.
+%           the interaction radius is desired, use 'intRad' field.
 %           Should take the distance matrix D from torusDistance.m and return 
 %           a weight matrix corresponding to D.
 %       G (function handle) - handle of the response function.
@@ -58,6 +58,7 @@ function [xRec, xHist, rngSetts] = aggWithDelay(expParams)
 %       boundConds (string) - type of the boundary conditions.
 %           Should be one of the following strings:
 %               "Periodic"
+%               "Ricochet"
 %               "Reflective"
 %
 %       USER:
@@ -66,12 +67,47 @@ function [xRec, xHist, rngSetts] = aggWithDelay(expParams)
 %           divided by stepRecMod is zero. The plots are shown in movie-like sense. 
 %           If stepPlotMod = -1, then only the last state is plotted.
 %           If stepPlotMod = -2, then no states are plotted.
-%       stepRecMod (positive integer) - simulation records the t-th step if the reminder of t 
-%           divided by stepRecMod is zero. Last state is always recorded.
-%           If stepRecMod = 0, then all states (including x0 - initial
-%           state) are recorded.
-%           If stepRecMod = -1, then only the last state is recorded.
+%       stepRecMod (positive integer) - simulation records the t-th matrix 
+%           of positions if the reminder of t divided by stepRecMod is zero. 
+%           Last matrix is always recorded.
+%           If stepRecMod = 0, then all matrices (including x0 - initial
+%           matrix) are recorded.
+%           If stepRecMod = -1, then only the last matrix is recorded.
+%       thetaRecMod (positive integer) - simulation records the t-th local
+%           density vector (theta) and its delayed value if the reminder of t 
+%           divided by stepRecMod is zero.e 
+%           Last vector is always recorded.
+%           If thetaRecMod = 0, then all vectors (including the one for x0) are recorded.
+%           If thetaRecMod = -1, then only the last vector is recorded.
+%           If no value is specified, then the value of 'stepRecMod' is
+%           used instead.
 %       expTitle (string) - title to be printed before the experiment begins
+%
+% OUTPUT:
+%   xRec (float matrix) - 3 dimensional matrix of all recorded matrices of
+%       positions. Its dimensions are [N,d,count], where count is the final
+%       count of recorded matrices. 
+%       xRec(:,:,end) is always the matrix of positions at the end of the simulation. 
+%       If input stepRecMod = 0, then xRec(:,:,1) is the matrix of initial
+%       positions.
+%   thetaRec (float matrix) - 3 dimensional matrix of all recorded local density vectors (theta). 
+%       Its dimensions are [N,2,count], where count is the final
+%       count of recorded matrices.
+%       thetaRec(:,1,i) is the density vector after i-th step of the simulation
+%       calculated with NO delay.
+%       thetaRec(:,2,i) is the density vector after i-th step of the simulation
+%       calculated WITH delay, based on the delay type.
+%       thetaRec(:,:,end) is always the density vector at the end of the simulation. 
+%       If input thetaRecMod = 0, then thetaRec(:,:,1) is the initial
+%       density vector.
+%   xHist (float matrix) - 3 dimensional matrix of the last history of
+%       positions, which still affect the following simulation steps.
+%       Its dimensions are [N,d,stepDelay]. It can be directly plugged in
+%       as an input to this function to continue in the experiment.
+%   rngSetts (struct) - struct returned by the rng function, containing
+%       random generator settings right after the simulation have finished.
+%       It can be directly plugged in as an input to this function to 
+%       continue in the experiment.
 
 
 %---------------------------------------------------------------------------
@@ -188,7 +224,7 @@ end
 % Time step length
 if ~isfield(expParams,"dt") || ~isfloat(expParams.dt) || expParams.dt <= 0
     fprintf("Either no or wrong value for the time step length 'dt'.\n")
-    dt = 1e-2;                  % default time step length
+    dt = 1e-3;                  % default time step length
     fprintf("Setting dt = %.3d\n\n", dt)
 else
     dt = expParams.dt;
@@ -225,8 +261,8 @@ end
 if ~isfield(expParams,"xInitHist") || ~isfloat(expParams.xInitHist) || ...
         ~isequal(size(expParams.xInitHist),[N,d,stepDelay])
     fprintf("Either no or wrong value for the matrix of initial history of positions 'xInitHist'.\n")
-    xHist = repmat(x,[1,1,stepDelay]);  % default initial history
-    fprintf("Initializing experiment with constant initial history.\n\n")
+    xHist = generInitHist(x,dt,stepDelay)  % default initial history
+    fprintf("Initializing experiment with 'blind motion' initial history.\n\n")
 else
     xHist = expParams.xInitHist;
     fprintf("Initial history of the matrix of positions accepted.\n\n")
@@ -238,19 +274,21 @@ end
 if ~isfield(expParams,"W") || ~isa(expParams.W,"function_handle")
     fprintf("Either no or wrong value for the handle of the weight function 'W'.\n")
     fprintf("Using normed characterictic function of d-dimensional ball.\n")
+    kappa_1 = 2;  % "volume" of a unit 1-ball
+    kappa = pi^(d/2) / gamma(d / 2 + 1);  % volume of a unit d-ball
     fprintf("   |\n")
-    if ~isfield(expParams,"interRad") || ~isnumeric(expParams.interRad) || expParams.interRad < 0
+    if ~isfield(expParams,"intRad") || ~isnumeric(expParams.intRad) || expParams.intRad < 0
         fprintf("   Either no or wrong value for the interaction radius 'intRad'.\n")
-        interRad = 0.0025^(1/d);         % interaction radius
-        fprintf("   Setting interRad = %.3d\n", interRad)
+        intRad_1 = 0.05^2 / 2 * pi;
+        intRad = (kappa_1 / kappa * intRad_1)^(1/d);         % interaction radius
+        fprintf("   Setting intRad = %.3d\n", intRad)
     else
-        interRad = expParams.interRad;
-        fprintf("   interRad = %.3d\n", interRad)
+        intRad = expParams.intRad;
+        fprintf("   intRad = %.3d\n", intRad)
     end
     fprintf("   |\n")
-    kappa = pi^(d/2) / gamma(d / 2 + 1);  % volume of a unit d-ball
-    W_norm = kappa * interRad^d;   % W_norm to normalize W
-    W = @(D) (D <= interRad) ./ W_norm;    % default handle of the weight function
+    W_norm = kappa * intRad^d;   % W_norm to normalize W
+    W = @(D) (D <= intRad) ./ W_norm;    % default handle of the weight function
     fprintf("Setting W = %s.\n\n", func2str(W))
 else
     W = expParams.W;
@@ -301,6 +339,15 @@ else
     fprintf("Step record mod: %i.\n\n", stepRecMod)
 end
 
+% Theta record mod
+if ~isfield(expParams,"thetaRecMod") || ~IsInteger(expParams.thetaRecMod) || ... 
+        (expParams.thetaRecMod <= 0 && expParams.thetaRecMod ~= 0 && expParams.thetaRecMod ~= -1)
+    thetaRecMod = stepRecMod;  % default step record mod
+else
+    thetaRecMod = expParams.thetaRecMod;
+    fprintf("Theta record mod: %i.\n\n", thetaRecMod)
+end
+
 
 %---------------------------------------------------------------------------
 %---------------------------------------------------------------------------
@@ -322,34 +369,55 @@ end
 fprintf(".\n\n")
 
 
-% Set auxiliary variables
+% Set auxiliary variablesrecCount
 histCoeff = stepDelay;
 
 % Set output variables
-% Decide the size of xRec
-recCount = 0;
-if stepRecMod > 1
-    recCount = floor(T / stepRecMod);
-    % To not record last state twice
-    if mod(T, stepRecMod) == 0
-        recCount = recCount - 1;
-    end
-else
-    if stepRecMod ~= -1
-        recCount = T - 1;
+% Auxiliary function to determine the count of to be recorded states
+function count = getRecCount(module)
+    count = 0;
+    if module > 1
+        count = floor(T / module);
+        % To not record last state twice
+        if mod(T, module) == 0
+            count = count - 1;
+        end
+    else
+        if module ~= -1
+            count = T - 1;
+        end
     end
 end
 
+% Decide the size of xRec
+xRecCount = getRecCount(stepRecMod);
+
 % Setup to record initial state
 if stepRecMod == 0
-    xRec = zeros([N,d,recCount + 2]);
+    xRec = zeros([N,d,xRecCount + 2]);
     xRec(:,:,1) = x;
-    recIndex = 2;
+    xRecIndex = 2;
     stepRecMod = 1;
 else 
-    xRec = zeros([N,d,recCount + 1]);
-    recIndex = 1;
+    xRec = zeros([N,d,xRecCount + 1]);
+    xRecIndex = 1;
 end
+
+% Decide the size of thetaRec
+thetaRecCount = getRecCount(thetaRecMod);
+
+% Setup to record initial theta
+if thetaRecMod == 0
+    thetaRec = zeros([N,2,thetaRecCount + 2]);
+    thetaRec(:,1,1) = getTheta(getDelayedDists(x,xHist,histCoeff,"None"));
+    thetaRec(:,2,1) = getTheta(getDelayedDists(x,xHist,histCoeff,delayType));
+    thetaRecIndex = 2;
+    thetaRecMod = 1;
+else 
+    thetaRec = zeros([N,d,thetaRecCount + 1]);
+    thetaRecIndex = 1;
+end
+
     
 
 % Saving maximal values of W to normalize 1D graphs
@@ -360,7 +428,7 @@ volume = prod(dims);
 % Simulate for t=1:T
 for t=1:T
     % Distance matrix
-    D = getDelayedDists(x,xHist,histCoeff);
+    D = getDelayedDists(x,xHist,histCoeff,delayType);
 
     % Update history of x before changing x
     if delayType ~= "None"
@@ -387,8 +455,8 @@ for t=1:T
         case "Periodic"
             % Periodic BCs
             x = mod(x,dims);
-        case "Reflective"
-            % Reflective BCs
+        case "Ricochet"
+            % Ricochet BCs
             x = abs(x);
             x = dims - abs(dims - x);
     end
@@ -402,8 +470,15 @@ for t=1:T
 
     % Record simulation state
     if stepRecMod ~= -1 && mod(t,stepRecMod) == 0
-        xRec(:,:,recIndex) = x;
-        recIndex = recIndex + 1;
+        xRec(:,:,xRecIndex) = x;
+        xRecIndex = xRecIndex + 1;
+    end
+
+    % Record theta
+    if thetaRecMod ~= -1 && mod(t,thetaRecMod) == 0
+        thetaRec(:,1,thetaRecIndex) = getTheta(getDelayedDists(x,xHist,histCoeff,"None"));
+        thetaRec(:,2,thetaRecIndex) = getTheta(getDelayedDists(x,xHist,histCoeff,delayType));
+        thetaRecIndex = thetaRecIndex + 1;
     end
 end
 
@@ -428,7 +503,7 @@ end
 % Calculates the distance matrix of the agents with (possible) delay
 % Delay is included by taking the last x from x_history using histCoeff
 % Takes into account boundary conditions
-function D = getDelayedDists(x, xHist, histCoeff)
+function D = getDelayedDists(x, xHist, histCoeff, delayType)
     switch delayType
         case "Reaction"
             D = getDists(xHist(:,:,histCoeff),xHist(:,:,histCoeff));
@@ -450,7 +525,7 @@ function D = getDists(x_1,x_2)
         case "Periodic"
             % Distances on torus
             D = torusDistances(x_1,x_2,dims);
-        case "Reflective"
+        case "Ricochet"
             % Normal distances
             D = distances(x_1,x_2);
         otherwise
@@ -460,7 +535,10 @@ end
 
 % Calculates local density from the ((partially) delayed) distance matrix D
 function theta = getTheta(D)
-    theta = sum(W(D),2) / N * volume; 
+    % Subtract 1 from W to exclude the current individual, since its
+    sumMatrix = W(D);
+    sumMatrix(1:size(D,1)+1:size(D,1)*size(D,2)) = 0;
+    theta = (sum(sumMatrix,2)) / (N-1) * volume; 
     % This means the model behaves similarly for constanc volume density of
     % agents: N/volume, and at the same time behaves the same for different
     % amount of agents in the same volume
@@ -468,6 +546,8 @@ end
 
 % Record final simulation state
 xRec(:,:,end) = x;
+thetaRec(:,1,end) = getTheta(getDelayedDists(x,xHist,histCoeff,"None"));
+thetaRec(:,2,end) = getTheta(getDelayedDists(x,xHist,histCoeff,delayType));
 
 % Record last history of x - just permute the history
 lastIndex = histCoeff + 1;
