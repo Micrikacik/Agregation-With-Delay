@@ -47,7 +47,7 @@ switch boundConds
     case "Periodic"
         %calculate distances over the torus
         dist = torusDistances(x,x,dims);
-    case "Ricochet"
+    case "Reflective"
         %calculate distances
         dist = distances(x);
     otherwise
@@ -62,11 +62,9 @@ switch d
     case 1
         gscatter(x(:,1),theta,idx);
         axis([0 dims(1) 0 1]);
-        getframe;
     case 2
         gscatter(x(:,1),x(:,2),idx);
         axis([0 dims(1) 0 dims(2)]);
-        getframe;
     case 3
         max_idx = max(idx);
         hues = (idx + 1) ./ (max_idx + 1);
@@ -81,7 +79,6 @@ switch d
         colors = hsv2rgb([hues, sats, vals]);
         scatter3(x(:,1),x(:,2),x(:,3),[],colors,'filled');
         axis([0 dims(1) 0 dims(2) 0 dims(3)]);
-        getframe;
 end
 
     function result = idxMap(code,default,idx)

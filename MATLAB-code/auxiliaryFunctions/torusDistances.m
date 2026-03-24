@@ -1,5 +1,5 @@
 function D = torusDistances(x_1,x_2,dims)
-% x_1, x_2 are Nxd, all d coordinates of all N agents in [0,1]^d
+% x_1, x_2 are Nxd, all d coordinates of all N agents in dims
 % D will be NxN (symmetric) distance matrix on the torus with dimensions
 % defined by dims
 

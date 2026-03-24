@@ -1,5 +1,5 @@
 function D = distances(x_1,x_2)
-% x_1, x_2 are Nxd, all d coordinates of all N agents in [0,1]^d
+% x_1, x_2 are Nxd, all d coordinates of all N agents
 % D will be NxN (symmetric) distance matrix
 
 arguments

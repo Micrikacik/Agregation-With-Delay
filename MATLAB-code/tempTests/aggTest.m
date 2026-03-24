@@ -119,3 +119,15 @@ figure(2)
 X{2} = aggWithDelay(params{2});
 
 save("tempTests/BCsTestResults.mat","X","params")
+
+%%
+N = 400;
+dt = 1e-3;
+delayType = "Reaction";
+T = 300000;
+d = 2;
+params = struct("N", N, "d", d, "stepDelay", 100, ...
+        "dt", dt, "stepRecMod", -1, "waitForConf", false, ...
+        "stepPlotMod", -2, "delayType", delayType, "T", T);
+
+aggWithDelay(params)

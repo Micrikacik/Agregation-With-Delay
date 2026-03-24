@@ -1,4 +1,4 @@
-function [xRec, thetaRec, xHist, rngSetts] = aggWithDelay(expParams)
+function [xRec, thetaRec, thetaOccur, xInitHist, xHist, rngSetts] = aggWithDelaySpeedup(expParams)
 
 % Runs the discrete simulation of agregation with a constant delay.
 %
@@ -25,21 +25,9 @@ function [xRec, thetaRec, xHist, rngSetts] = aggWithDelay(expParams)
 %           x(i,:) - position (float vector) in [0,1]^d of the i-th agent.
 %           Alternatively, instead of x0, set the dimension d and number of
 %           agents N.
-%       dims (positive float ROW vector) - dimensions of the simulation, i.e., dimensions
-%           of the box, in which the agents move.
-%           Thic row vector does NOT influence the parameter d, in fact, dims
-%           will be either truncated or filled up with 1, to match its
-%           length with d.
 %
 %       MODEL:
 %       intRad (positive float) - radius of interactions between agents.
-%       W (function handle) - handle of the weight function. If a change of
-%           the interaction radius is desired, use 'intRad' field.
-%           Should take the SQUARED-distance matrix D from torusDistances.m
-%           (or distances.m) and return a weight matrix corresponding to D.
-%       G (function handle) - handle of the response function.
-%           Should take the average density vector theta and return a response 
-%           vector corresponding to theta.
 %       boundConds (string) - type of the boundary conditions.
 %           Must be one of the following strings:
 %               "Periodic"
@@ -67,7 +55,6 @@ function [xRec, thetaRec, xHist, rngSetts] = aggWithDelay(expParams)
 %           The plots are shown in movie-like sense. 
 %           If stepPlotMod = -1, then only the last step is plotted.
 %           If stepPlotMod = -2, then no steps are plotted.
-%       traces TODO
 %       markAgents (positive integer vector) - vector containing indeces
 %           of the agents to be marked. See 'markColor' for mark color.
 %       markColor (nonegative float matrix) - matrix with 3 columns of the
@@ -75,18 +62,30 @@ function [xRec, thetaRec, xHist, rngSetts] = aggWithDelay(expParams)
 %           triplet, which indicates what color to mark the agent with 
 %           (specified by 'markAgents' index in the same row).
 %       stepRecMod (positive integer or 0 or -1) - simulation records the t-th matrix 
-%           of positions if the reminder of t divided by stepRecMod is zero. 
+%           of positions if the reminder of t divided by 'stepRecMod' is zero. 
 %           Last matrix is always recorded.
-%           If stepRecMod = 0, then all matrices (including x0 - initial
-%           matrix) are recorded.
 %           If stepRecMod = -1, then only the last matrix is recorded.
-%       thetaRecMod (positive integer or 0 or -1) - simulation records the t-th local
+%       recInitStep (logical) - if true, then the initial positions matrix
+%           x0 is recorded to xRec(:,:,1).
+%       thetaRecMod (positive integer or 0 or -1) - simulation records the t-th average
 %           density vector (theta) and its delayed value if the reminder of t 
-%           divided by stepRecMod is zero.e 
+%           divided by 'thetaRecMod' is zero.e 
 %           Last vector is always recorded.
-%           If thetaRecMod = 0, then all vectors (including the one for x0) are recorded.
 %           If thetaRecMod = -1, then only the last vector is recorded.
 %           If no value is specified, then the value of 'stepRecMod' is
+%           used instead.
+%       recInitTheta (logical) - if true, then the initial density vector (theta)
+%           and its delayed value are recorded to thetaRec(:,:,1).
+%           If no value is specified, then the value of 'recInitStep' is
+%           used instead.
+%       thetaOccurMod (positive integer or 0 or -1) - simulation records the 
+%           occurances of an agents with specific numbers of actual neighbours 
+%           and delayed neighbours in the t-th step, if the reminder of t 
+%           divided by 'thetaOccurMod' is zero.
+%           The first step is always counted.
+%           The last step is counted only if mod(T,thetaOccurMod) == 0.
+%           If thetaOccurMod = -1, then no in-between steps are counted.
+%           If no value is specified, then the value of 'thetaRecMod' is
 %           used instead.
 %       expTitle (string) - title to be printed before the experiment begins
 %
@@ -97,9 +96,9 @@ function [xRec, thetaRec, xHist, rngSetts] = aggWithDelay(expParams)
 %       xRec(:,:,end) is always the matrix of positions at the end of the simulation. 
 %       If input stepRecMod = 0, then xRec(:,:,1) is the matrix of initial
 %       positions.
-%   thetaRec (float matrix) - 3 dimensional matrix of all recorded local density vectors (theta). 
-%       Its dimensions are [N,2,count], where count is the final
-%       count of recorded matrices.
+%   thetaRec (float matrix) - 3 dimensional matrix of all recorded average 
+%       density vectors (theta). Its dimensions are [N,2,count], 
+%       where count is the final count of recorded matrices.
 %       thetaRec(:,1,i) is the density vector after i-th step of the simulation
 %       calculated with NO delay.
 %       thetaRec(:,2,i) is the density vector after i-th step of the simulation
@@ -107,6 +106,14 @@ function [xRec, thetaRec, xHist, rngSetts] = aggWithDelay(expParams)
 %       thetaRec(:,:,end) is always the density vector at the end of the simulation. 
 %       If input thetaRecMod = 0, then thetaRec(:,:,1) is the initial
 %       density vector.
+%   thetaOccur (float matrix) - 2 dimensional matrix. 
+%       Rows represent all the possible amounts of agent within 
+%       the interaction radius of one agent. 
+%       Columns represent all the possible amounts of agents within 
+%       the interaction radius of one agent, while taking into account used delay. 
+%       Element recTheta(i,j) is then the number of ocurrences of an
+%       agent, who had i actual neighbours and j delayed neighbours, in
+%       any step which was recorded based on 'thetaRecMod'.
 %   xHist (float matrix) - 3 dimensional matrix of the last history of
 %       positions, which still affect the following simulation steps.
 %       Its dimensions are [N,d,stepDelay]. It can be directly plugged in
@@ -188,72 +195,38 @@ else
     fprintf("x0 accepted, N = %i, d = %i.\n\n", N, d)
 end
 
-% Dimensions
-if ~isfield(expParams,"dims") || ~isfloat(expParams.dims) || any(expParams.dims <= 0) || ...
-        ~isequal(size(expParams.dims),[1,d])
-    fprintf("Either no or wrong value for the vector of dimensions 'dims'.\n")
-    dims = ones(1,d);           % default dimensions
-    fprintf("Setting all dimensions to 1.\n\n")
-else 
-    dims = expParams.dims;
-    fprintf("dims: \n")
-    disp(dims)
-end
-
 % Setting random initial positions
 if isempty(x)
-    x = rand(N, d) .* (dims);
+    x = rand(N, d);
 end
 
 %----------------------------------MODEL------------------------------------
 
-% Weight function (handle)
-if ~isfield(expParams,"W") || ~isa(expParams.W,"function_handle") || ...
-        ~isequal(size(expParams.W),[1,1])
-    fprintf("Either no or wrong value for the handle of the weight function 'W'.\n")
-    fprintf("Using normed characterictic function of d-dimensional ball.\n")
+% Interaction radius
+kappa = pi^(d/2) / gamma(d / 2 + 1);  % volume of a unit d-ball
+if ~isfield(expParams,"intRad") || ~isnumeric(expParams.intRad) || expParams.intRad < 0
+    fprintf("Either no or wrong value for the interaction radius 'intRad'.\n")
     kappa_1 = 2;    % "volume" of a unit 1-ball
     kappa_2 = pi;   % "volume" of a unit 2-ball
-    kappa = pi^(d/2) / gamma(d / 2 + 1);  % volume of a unit d-ball
-    fprintf("   |\n")
-    if ~isfield(expParams,"intRad") || ~isnumeric(expParams.intRad) || expParams.intRad < 0
-        fprintf("   Either no or wrong value for the interaction radius 'intRad'.\n")
-        intRad_1 = 0.05^2 / kappa_1 * kappa_2;              % interaction radius in 1D
-        intRad = (kappa_1 / kappa * intRad_1)^(1/d);        % interaction radius - it will be 0.05 in 2D
-        fprintf("   Setting intRad = %.3d\n", intRad)
-    else
-        intRad = expParams.intRad;
-        fprintf("   intRad = %.3d\n", intRad)
-    end
-    fprintf("   |\n")
-    W_norm = kappa * intRad^d;   % W_norm to normalize W
-    W = @(D) (D <= intRad) ./ W_norm;    % default handle of the weight function - THIS IS A BIT SLOWER, SINCE, TO GET THETA, WE FIRST DIVIDE AND THEN SUM, BUT IT COULD BE DONE THE OTHER WAY AROUND
-    fprintf("Setting W = %s.\n\n", func2str(W))
+    intRad_1 = 0.05^2 / kappa_1 * kappa_2;              % interaction radius in 1D
+    intRad = (kappa_1 / kappa * intRad_1)^(1/d);        % interaction radius - it will be 0.05 in 2D
+    fprintf("Setting intRad = %.3d\n\n", intRad)
 else
-    W = expParams.W;
-    fprintf("W = %s.\n\n", func2str(W))
+    intRad = expParams.intRad;
+    fprintf("intRad = %.3d\n\n", intRad)
 end
-
-% Response function (handle)
-if ~isfield(expParams,"G") || ~isa(expParams.G,"function_handle") || ...
-        ~isequal(size(expParams.G),[1,1])
-    fprintf("Either no or wrong value for the handle of the response function 'G'.\n")
-    G = @(theta) exp(-theta);   % default handle of the response function
-    fprintf("Setting G = %s.\n\n", func2str(G))
-else
-    G = expParams.G;
-    fprintf("G = %s.\n\n", func2str(G))
-end
+W_norm = kappa * intRad^d;      % W_norm to normalize W (done after the summation for efficiency)
+intRadSqrd = intRad*intRad;     % Squared raduius for faster calculations
 
 % Boundary conditions
 if ~isfield(expParams,"boundConds") || ~isstring(expParams.boundConds) || ...
         ~isequal(size(expParams.boundConds),[1,1])
     fprintf("Either no or wrong value for the boundary conditions 'boundConds'.\n")
     boundConds = "Periodic";    % default boundary conditions
-    fprintf("Setting boundary conditions to %s.\n\n", boundConds)
+    fprintf("Setting boundary conditions to '%s'.\n\n", boundConds)
 else
     boundConds = expParams.boundConds;
-    fprintf("boundConds: %s.\n\n", boundConds)
+    fprintf("boundConds: '%s'.\n\n", boundConds)
 end
 
 %------------------------------TIME-&-DELAY---------------------------------
@@ -285,10 +258,10 @@ if ~isfield(expParams,"delayType") || ~isstring(expParams.delayType) || ...
         ~isequal(size(expParams.delayType),[1,1])
     fprintf("Either no or wrong value for the delay type 'delayType'.\n")
     delayType = "Reaction";     % default delay type
-    fprintf("Setting delay type to %s.\n\n", delayType)
+    fprintf("Setting delay type to '%s'.\n\n", delayType)
 else
     delayType = expParams.delayType;
-    fprintf("delayType: %s.\n\n", delayType)
+    fprintf("delayType: '%s'.\n\n", delayType)
 end
 
 % Step delay
@@ -312,12 +285,15 @@ end
 if ~isfield(expParams,"xInitHist") || ~isfloat(expParams.xInitHist) || ...
         ~isequal(size(expParams.xInitHist),[N,d,stepDelay])
     fprintf("Either no or wrong value for the matrix of initial history of positions 'xInitHist'.\n")
-    xHist = genInitHist(x,dt,stepDelay,boundConds,dims);  % default initial history
+    xHist = genInitHist(x,dt,stepDelay,boundConds,ones(1,d));  % default initial history
     fprintf("Initializing experiment with 'blind motion' initial history.\n\n")
 else
     xHist = expParams.xInitHist;
     fprintf("xInitHist accepted.\n\n")
 end
+
+% Return initial history (for example if randomly generated)
+xInitHist = xHist;
 
 %----------------------------------USER-------------------------------------
 
@@ -333,35 +309,40 @@ else
     fprintf("stepPlotMod: %i.\n\n", stepPlotMod)
 end
 
-% Marked agents indeces
-if ~isfield(expParams,"markAgents") || ~IsInteger(expParams.markAgents) || any(expParams.markAgents <= 0) || ...
-        ~isequal(size(expParams.markAgents),[size(expParams.markAgents,1),1])
-    fprintf("Either no or wrong value for the marked agents indeces 'markAgents'.\n")
-    markAgents = [];  % default marks
-    fprintf("None of the agents will be marked.\n\n")
+if stepPlotMod > 0
+    % Marked agents indeces
+    if ~isfield(expParams,"markAgents") || ~IsInteger(expParams.markAgents) || any(expParams.markAgents <= 0) || ...
+            ~isequal(size(expParams.markAgents),[size(expParams.markAgents,1),1])
+        fprintf("Either no or wrong value for the marked agents indeces 'markAgents'.\n")
+        markAgents = [];  % default marks
+        fprintf("None of the agents will be marked.\n\n")
+    else
+        markAgents = expParams.markAgents;
+        fprintf("markAgents: ")
+        disp(markAgents.')
+    end
+    
+    % Marked agents colors
+    if ~isfield(expParams,"markColors") || ~isfloat(expParams.markColors) || ...
+            any(expParams.markColors < 0) || any(expParams.markColors > 1) || ...
+            ~isequal(size(expParams.markColors),[N,3])
+        fprintf("Either no or wrong value for the marked agents colors 'markAgents'.\n")
+        markColors = repmat([1,0,0],[length(markAgents),1]);
+        fprintf("Setting marked agents colors to red.\n\n")
+    else
+        markColors = expParams.markColors;
+        fprintf("markColors accepted.\n\n")
+    end
 else
-    markAgents = expParams.markAgents;
-    fprintf("markAgents: ")
-    disp(markAgents.')
-end
-
-% Marked agents colors
-if ~isfield(expParams,"markColors") || ~isfloat(expParams.markColors) || ...
-        any(expParams.markColors < 0) || any(expParams.markColors > 1) || ...
-        ~isequal(size(expParams.markColors),[N,3])
-    fprintf("Either no or wrong value for the marked agents colors 'markAgents'.\n")
-    markColors = repmat([1,0,0],[length(markAgents),1]);
-    fprintf("Setting marked agents colors to red.\n\n")
-else
-    markColors = expParams.markColors;
-    fprintf("markColors accepted.\n\n")
+    markColors = [];
+    fprintf("No agent marking, since plotting is disabled.\n\n")
 end
 
 % Step record mod
 if ~isfield(expParams,"stepRecMod") || ~IsInteger(expParams.stepRecMod) || ... 
-        (expParams.stepRecMod <= 0 && expParams.stepRecMod ~= 0 && expParams.stepRecMod ~= -1) || ...
+        (expParams.stepRecMod <= 0 && expParams.stepRecMod ~= -1) || ...
         ~isequal(size(expParams.stepRecMod),[1,1])
-    fprintf("Either no or wrong value for the record mod 'stepRecMod'.\n")
+    fprintf("Either no or wrong value for the step record mod 'stepRecMod'.\n")
     stepRecMod = -1;  % default step record mod
     fprintf("Setting step record mod to %i.\n\n", stepRecMod)
 else
@@ -371,12 +352,26 @@ end
 
 % Theta record mod
 if ~isfield(expParams,"thetaRecMod") || ~IsInteger(expParams.thetaRecMod) || ... 
-        (expParams.thetaRecMod <= 0 && expParams.thetaRecMod ~= 0 && expParams.thetaRecMod ~= -1) || ...
+        (expParams.thetaRecMod <= 0 && expParams.thetaRecMod ~= -1) || ...
         ~isequal(size(expParams.thetaRecMod),[1,1])
+    fprintf("Either no or wrong value for the theta record mod 'thetaRecMod'.\n")
     thetaRecMod = stepRecMod;  % default theta record mod
+    fprintf("Setting theta record mod to %i.\n\n", thetaRecMod)
 else
     thetaRecMod = expParams.thetaRecMod;
     fprintf("thetaRecMod: %i.\n\n", thetaRecMod)
+end
+
+% Theta occurance mod
+if ~isfield(expParams,"thetaOccurMod") || ~IsInteger(expParams.thetaOccurMod) || ... 
+        (expParams.thetaOccurMod <= 0 && expParams.thetaOccurMod ~= -1) || ...
+        ~isequal(size(expParams.thetaOccurMod),[1,1])
+    fprintf("Either no or wrong value for the theta occurance mod 'thetaOccurMod'.\n")
+    thetaOccurMod = thetaRecMod;  % default theta record mod
+    fprintf("Setting theta occurance mod to %i.\n\n", thetaOccurMod)
+else
+    thetaOccurMod = expParams.thetaOccurMod;
+    fprintf("thetaOccurMod: %i.\n\n", thetaOccurMod)
 end
 
 
@@ -395,30 +390,34 @@ end
 fprintf("----------------------------------\n\n")
 fprintf("Starting the simulation")
 if isfield(expParams,"expTitle") && isstring(expParams.expTitle) && isequal(size(expParams.expTitle),[1,1])
-    fprintf(", title: %", expParams.expTitle)
+    fprintf(", title: %s", expParams.expTitle)
 end
 fprintf(".\n\n")
 
 
-% Set auxiliary variablesrecCount
+% Set auxiliary variables
+
+% Coefficient to access history
 histCoeff = stepDelay;
+
+% Colors of agents in plots (to visualize marked agents)
+scatterColors = repmat([0.1,0.6,1],[N,1]); % Unmarked color
+if ~isempty(markColors)
+    scatterColors(markAgents,:) = markColors;
+end
 
 % Set output variables
 
 % Auxiliary function to determine the count of to be recorded steps
 function count = getRecCount(module)
-    count = 0;
-    if module > 1
-        count = floor(T / module);
-        % To not record last step twice
-        if mod(T, module) == 0
-            count = count - 1;
+    % We do not want to record
+    if module > 0
+        count = ceil(T / module);
+        if count == 0
+            count = 1; % We always record the last step
         end
     else
-        % Record every step
-        if module ~= -1
-            count = T - 1;
-        end
+        count = 1; % Record just the last step
     end
 end
 
@@ -426,13 +425,12 @@ end
 xRecCount = getRecCount(stepRecMod);
 
 % Setup to record initial step
-if stepRecMod == 0
-    xRec = zeros([N,d,xRecCount + 2]);
+if isfield(expParams,"recInitStep") && expParams.recInitStep == true
+    xRec = zeros([N,d,xRecCount + 1]);
     xRec(:,:,1) = x;
     xRecIndex = 2;
-    stepRecMod = 1; % We use stepRecMod in mod(), so this is to record every step
 else 
-    xRec = zeros([N,d,xRecCount + 1]);
+    xRec = zeros([N,d,xRecCount]);
     xRecIndex = 1;
 end
 
@@ -440,31 +438,31 @@ end
 thetaRecCount = getRecCount(thetaRecMod);
 
 % Setup to record initial theta
-if thetaRecMod == 0
-    thetaRec = zeros([N,2,thetaRecCount + 2]);
-    thetaRec(:,1,1) = getTheta(getDists(x,x));
-    thetaRec(:,2,1) = getTheta(getDelayedDists(x,xHist,histCoeff,delayType));
+if (isfield(expParams,"recInitTheta") && expParams.recInitTheta == true) || ...
+        isfield(expParams,"recInitStep") && expParams.recInitStep == true
+    thetaRec = zeros([N,2,thetaRecCount + 1]);
+    thetaRec(:,1,1) = getTheta(getDistsSqrd(x,x));
+    thetaRec(:,2,1) = getTheta(getDelayedDistsSqrd(x,xHist,histCoeff,delayType));
     thetaRecIndex = 2;
-    thetaRecMod = 1; % We use thetaRecMod in mod(), so this is to record every step
 else 
-    thetaRec = zeros([N,d,thetaRecCount + 1]);
+    thetaRec = zeros([N,d,thetaRecCount]);
     thetaRecIndex = 1;
 end
 
-% Saving maximal values of W to normalize 1D graphs
-W_max = W(0);
+% Setup to count occurances
+thetaOccur = zeros(N+1,N+1);    % 1 <= number of neighbours <= N
 
-% Volume of simulation box to normalize model
-volume = prod(dims);
-
-% Colors of agents in plots (to visualize marked agents)
-scatterColors = repmat([0.1,0.6,1],[N,1]); % Unmarked color
-scatterColors(markAgents,:) = markColors;
+% Count initial occurances (so the edge case T = 0 works properly)
+if thetaOccurMod ~= -1
+    interCountsRealTime = getInterCountsFromDSqrd(getDistsSqrd(x,x));
+    interCounts = getInterCountsFromDSqrd(getDelayedDistsSqrd(x,xHist,histCoeff,delayType));
+    thetaOccur = accumarray([interCountsRealTime(:),interCounts(:)]+1, 1, size(thetaOccur));
+end
 
 % Simulate for t=1:T, this loop calculates the  step t from the step t-1
 for t=1:T
     % Distance matrix
-    D = getDelayedDists(x,xHist,histCoeff,delayType);
+    DSqrd = getDelayedDistsSqrd(x,xHist,histCoeff,delayType);
 
     % Update history of x before changing x
     if delayType ~= "None"
@@ -473,22 +471,40 @@ for t=1:T
         if histCoeff <= 0
             histCoeff = stepDelay;
         end
+    end   
+
+    % Vector, where i-th element is the count of agents 
+    % in the interaction radius of the i-th agent (including the i-th)
+    interCounts = getInterCountsFromDSqrd(DSqrd);
+    
+    % Count theta occurrences from the previous (t-1) step 
+    % (to reduce calls of getDelayedDistsSqrd())
+    if t > 1 % Initial step is already recorded
+        if thetaOccurMod ~= -1 && mod(t-1,thetaOccurMod) == 0
+            interCountsRealTime = getInterCountsFromDSqrd(getDistsSqrd(x,x));
+            
+            % Count the occurrences of the theta couples and add them to
+            % the whole count
+            prevStepThetaOccur = accumarray([interCountsRealTime(:),interCounts(:)]+1, 1, size(thetaOccur));
+            thetaOccur = thetaOccur + prevStepThetaOccur;
+        end
     end
     
     % Local density
-    theta = getTheta(D);
+    theta = getThetaFromInterCounts(interCounts);
 
-    % Record theta from the previous step (to reduce calls of getDelayedDists())
+    % Record theta from the previous (t-1) step 
+    % (to reduce calls of getDelayedDistsSqrd())
     if t > 1 % Initial step is already recorded
         if thetaRecMod ~= -1 && mod(t-1,thetaRecMod) == 0
-            thetaRec(:,1,thetaRecIndex) = getTheta(getDists(x,x));
-            thetaRec(:,2,thetaRecIndex) = getTheta(theta);
+            thetaRec(:,1,thetaRecIndex) = getTheta(getDistsSqrd(x,x));
+            thetaRec(:,2,thetaRecIndex) = theta;
             thetaRecIndex = thetaRecIndex + 1;
         end
     end
         
     % Diffusivity
-    G_vals = G(theta);
+    G_vals = exp(-theta);
             
     % Calculate the update
     updt = G_vals .* randn(N,d);
@@ -500,23 +516,23 @@ for t=1:T
     switch boundConds
         case "Periodic"
             % Periodic BCs
-            x = mod(x,dims);
+            x = mod(x,1);
         case "Reflective"
             % Reflective BCs
             x = abs(x);
-            x = dims - abs(dims - x);
+            x = 1 - abs(1 - x);
     end
 
     % Plot - to make correct 1D plot, we need current theta
     if stepPlotMod > 0 && mod(t,stepPlotMod) == 0
-        D = getDists(x,x);
-        theta = getTheta(D);
+        DSqrd = getDistsSqrd(x,x);
+        theta = getTheta(DSqrd);
         plotSimStep(theta)
     end
 
     % Record simulation step
-    if t < T % Last step is recorded after this loop
-        if stepRecMod ~= -1 && mod(t,stepRecMod) == 0 && t < T
+    if t < T % Last step is recorded after this loop (since we could get mod(T,stepRecMod) ~= 0, so we record it specially after the loop)
+        if stepRecMod ~= -1 && mod(t,stepRecMod) == 0
             xRec(:,:,xRecIndex) = x;
             xRecIndex = xRecIndex + 1;
         end
@@ -526,16 +542,16 @@ end
 function plotSimStep(theta)
     switch d
         case 1
-            scatter(x(:,1),theta./(W_max*volume),[],scatterColors); 
-            axis([0 dims(1) 0 1]);
+            scatter(x(:,1),theta,[],scatterColors); 
+            axis([0 1 0 1]);
             getframe;
         case 2
             scatter(x(:,1),x(:,2),[],scatterColors); 
-            axis([0 dims(1) 0 dims(2)]);
+            axis([0 1 0 1]);
             getframe;
         case 3
             scatter3(x(:,1),x(:,2),x(:,3),[],scatterColors);
-            axis([0 dims(1) 0 dims(2) 0 dims(3)]);
+            axis([0 1 0 1 0 1]);
             getframe;
     end
 end
@@ -543,16 +559,16 @@ end
 % Calculates the distance matrix of the agents with (possible) delay.
 % Delay is included by taking the oldest x from x_history using histCoeff.
 % Takes into account boundary conditions.
-function D = getDelayedDists(x, xHist, histCoeff, delayType)
+function DSqrd = getDelayedDistsSqrd(x, xHist, histCoeff, delayType)
     switch delayType
         case "Reaction"
-            D = getDists(xHist(:,:,histCoeff),xHist(:,:,histCoeff));
+            DSqrd = getDistsSqrd(xHist(:,:,histCoeff),xHist(:,:,histCoeff));
         case "Transmission"
-            D = getDists(x,xHist(:,:,histCoeff));
+            DSqrd = getDistsSqrd(x,xHist(:,:,histCoeff));
         case "Inner"
-            D = getDists(xHist(:,:,histCoeff),x);
+            DSqrd = getDistsSqrd(xHist(:,:,histCoeff),x);
         case "None"
-            D = getDists(x,x);
+            DSqrd = getDistsSqrd(x,x);
         otherwise
             error('Invalid delay type.');
     end
@@ -560,31 +576,40 @@ end
 
 % Calculates the distance matrix from the given position matrices
 % Takes into account boundary conditions
-function D = getDists(x_1,x_2)
+function DSqrd = getDistsSqrd(x_1,x_2)
     switch boundConds
         case "Periodic"
             % Distances on torus
-            D = torusDistances(x_1,x_2,dims);
+            DSqrd = torusDistancesSqrd(x_1,x_2);
         case "Reflective"
             % Normal distances
-            D = distances(x_1,x_2);
+            DSqrd = distancesSqrd(x_1,x_2);
         otherwise
             error('Invalid boundary conditions.');
     end
 end
 
-% Calculates local density from the ((partially) delayed) distance matrix D
-function theta = getTheta(D)
-    theta = (sum(W(D),2)) / N * volume; 
-    % This means the model behaves similarly for constanc volume density of
-    % agents: N/volume, and at the same time behaves the same for different
-    % amount of agents in the same volume
+% Calculates the local density from the ((partially) delayed) distance matrix DSqrd
+function theta = getTheta(DSqrd)
+    theta = getThetaFromInterCounts(getInterCountsFromDSqrd(DSqrd));
 end
 
-% Record final simulation step
+% Calculates the local density of any i-th agent from the given numbers of
+% agents that are in the interaction radius of that i-th agent (returns the vector theta)
+function theta = getThetaFromInterCounts(interCounts)
+    theta = interCounts / W_norm / N;
+end
+
+% Calculates the number of agents in the interaction radius of any i-th
+% agent (returns a vector of these numbers)
+function interCounts = getInterCountsFromDSqrd(DSqrd)
+    interCounts = sum((DSqrd < intRadSqrd),2);
+end
+
+% Record final simulation step (the final step might not have been possible to record in the loop)
 xRec(:,:,end) = x;
-thetaRec(:,1,end) = getTheta(getDists(x,x));
-thetaRec(:,2,end) = getTheta(getDelayedDists(x,xHist,histCoeff,delayType));
+thetaRec(:,1,end) = getTheta(getDistsSqrd(x,x));
+thetaRec(:,2,end) = getTheta(getDelayedDistsSqrd(x,xHist,histCoeff,delayType));
 
 % Record last history of x - just permute the history
 % The coefficient was decreased in the final step, so we need to increase it back
@@ -599,16 +624,20 @@ xHist = xHist(:,:,permutation);
 rngSetts = rng;
 
 fprintf("----------------------------------\n\n")
-fprintf("Simulation finished.\n\n")
+fprintf("Simulation")
+if isfield(expParams,"expTitle") && isstring(expParams.expTitle) && isequal(size(expParams.expTitle),[1,1])
+    fprintf(" titled %s", expParams.expTitle)
+end
+fprintf(" finished.\n\n")
 
 if stepPlotMod ~= -2
     % We need to update theta for the last plot
-    D = getDists(x,x);
-    theta = getTheta(D);
+    DSqrd = getDistsSqrd(x,x);
+    theta = getTheta(DSqrd);
 
     fprintf("----------------------------------\n\n")
     fprintf("Plotting agregation groups.\n\n")
-    plotAgg(x,theta./(W_max*volume),dims,boundConds)
+    plotAgg(x,theta,ones(1,d),boundConds)
 end
 
 end
