@@ -88,6 +88,10 @@ function [xRec, thetaRec, thetaOccur, xInitHist, xHist, rngSetts] = aggWithDelay
 %           If no value is specified, then the value of 'thetaRecMod' is
 %           used instead.
 %       expTitle (string) - title to be printed before the experiment begins
+%       recordVideoPath (string) - if provided, script records the plotted
+%           positions as video onto this given path. This path should
+%           include the filename, but NOT the file extension. It will be
+%           saved as '.avi'.
 %
 % OUTPUT:
 %   xRec (float matrix) - 3 dimensional matrix of all recorded matrices of
@@ -407,6 +411,16 @@ if ~isempty(markColors)
     scatterColors(markAgents,:) = markColors;
 end
 
+% Setup VideoWriter if the simulation is recorded
+recordVideo = false;
+if isfield(expParams,"recordVideoPath") && isstring(expParams.recordVideoPath)
+    recordVideo = true;
+    vidWrit = VideoWriter(sprintf("%s.avi",expParams.recordVideoPath));
+    frameTime = stepPlotMod * dt;
+    vidWrit.FrameRate = 1 / frameTime;
+    open(vidWrit)
+end
+
 % Set output variables
 
 % Auxiliary function to determine the count of to be recorded steps
@@ -578,19 +592,24 @@ for t=1:T
 end
 
 function plotSimStep(theta)
+    f = [];
     switch d
         case 1
             scatter(x(:,1),theta,[],scatterColors); 
             axis([0 1 0 1]);
-            getframe;
+            f = getframe;
         case 2
             scatter(x(:,1),x(:,2),[],scatterColors); 
             axis([0 1 0 1]);
-            getframe;
+            f = getframe;
         case 3
             scatter3(x(:,1),x(:,2),x(:,3),[],scatterColors);
             axis([0 1 0 1 0 1]);
-            getframe;
+            f = getframe;
+    end
+
+    if recordVideo && ~isempty(f)
+        writeVideo(vidWrit,f)
     end
 end
 
@@ -642,6 +661,11 @@ end
 % agent (returns a vector of these numbers)
 function intCounts = getIntCountsFromDSqrd(DSqrd)
     intCounts = sum((DSqrd < intRadSqrd),2);
+end
+
+% Close video writer
+if recordVideo
+    close(vidWrit)
 end
 
 % Record final simulation step (the final step might not have been possible to record in the loop)

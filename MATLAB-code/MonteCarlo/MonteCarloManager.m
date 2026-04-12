@@ -1,4 +1,4 @@
-function [] = MonteCarloManager(d, stepDelays, delayType, nMC, startGroup, endGroup, overwrite, fileName)
+function [] = MonteCarloManager(d, stepDelays, delayType, nMC, startGroup, endGroup, overwrite, useBaseSeed, fileName)
 
 % d - dimension
 % stepDelays - vector of step delays
@@ -11,9 +11,10 @@ arguments
     stepDelays
     delayType
     nMC
-    startGroup = 1
-    endGroup = 0
+    startGroup = []
+    endGroup = []
     overwrite = false
+    useBaseSeed = false
     fileName = "MCData"
 end
 
@@ -44,6 +45,9 @@ baseParams = struct( ...
         ...% No experiment title
     );
 
+rng('default')
+rng('shuffle')
+
 p = gcp("nocreate");
 if isempty(p)
     p = parpool; % There is no parpool, so we start the default one
@@ -53,9 +57,28 @@ else
 end
 
 groupCount = ceil(nMC / poolsize);
-if endGroup < 1
+if  isempty(endGroup)
     endGroup = groupCount;
 end
+if isempty(startGroup)
+    startGroup = 1;
+end
+
+fprintf("Base parameters:\n")
+disp(baseParams)
+fprintf("Step delays:")
+disp(stepDelays)
+fprintf("Number of Monte Carlo simulations: %i\n\n", nMC)
+fprintf("Group count: %i\n\n", groupCount)
+fprintf("Pool size: %i\n\n", poolsize)
+fprintf("Start group: %i\n\n", startGroup)
+fprintf("End group: %i\n\n", endGroup)
+fprintf("Overwrite: %i\n\n", overwrite)
+fprintf("Use base seed: %i\n\n", useBaseSeed)
+fprintf("File name: %s\n\n", fileName)
+
+digitCountOfNMC = floor(log10(nMC + poolsize - 1)) + 1;
+baseSeed = [];
 
 % Divide the run into groups, which have the same size as there is workers,
 % to be able to save a part of the results as soon as possible
@@ -67,22 +90,29 @@ for group = startGroup:endGroup
         params = baseParams;
         params.stepDelay = stepDelay; % VARIABLE step delay
         params.expTitle = postfix;
-
-        [results, time] = MonteCarlo(params,poolsize);
+        
+        if useBaseSeed
+            baseSeed = stepDelay * 10^digitCountOfNMC + (group-1) * poolsize;
+        end
+        [results, time] = MonteCarlo(params, poolsize, baseSeed);
         
         folderPath = MCFolderPath(delayType,d,stepDelay,true);
         path = MCFilePath(folderPath,fileName,postfix);
         if isfile(path) && (overwrite == false)
-            fprintf("File on path \n%s \nalready exists, and overwriting is not allowed.", path)
-        else 
-            save(path, 'results', 'params', "poolsize", "time");
+            fprintf("File on path \n%s \nalready exists, and overwriting is not allowed. Saving as 'DUPLICATE'.\n\n", path)
+            path = MCFilePath(folderPath,"DUPLICATE_" + fileName,postfix);
         end
-
-        infoPath = sprinf("%s/info", folderPath);
-        if isfile(infoPath) && (overwrite == false)
-            fprintf("File on path \n%s \nalready exists, and overwriting is not allowed.", infoPath)
-        else 
-            save(infoPath, "poolsize", "groupCount", "params");
-        end
+        save(path, 'results', 'params', "poolsize", "time");
     end
+end
+
+% Save info files
+for stepDelay = stepDelays
+    folderPath = MCFolderPath(delayType,d,stepDelay);
+    infoPath = sprintf("%s/info.mat", folderPath);
+    if isfile(infoPath) && (overwrite == false)
+        fprintf("File on path \n%s \nalready exists, and overwriting is not allowed. Saving as 'DUPLICATE'.\n\n", infoPath)
+        infoPath = sprintf("%s/DUPLICATE_info.mat", folderPath);
+    end 
+    save(infoPath, "poolsize", "groupCount");
 end

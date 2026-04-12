@@ -1,10 +1,23 @@
-function [results, time] = MonteCarlo(expParams, nMC)
+function [results, time] = MonteCarlo(expParams, nMC, baseSeed)
 
-% params - parameters used as input to aggWithDelay.m
-% nMC - number of Monte Carlo simulations
+% expParams - Parameters used as input to aggWithDelaySpeedup.m
+% nMC - Number of Monte Carlo simulations.
+% baseSeed - Number to which the worker index is added (baseSeed + i) and
+%   the result is used as the seed for rng in the worker as rng(baseSeed + i). 
+%   If 'baseSeed = []', then rng(baseSeed + i) is not used in the worker.
+%
+% Calls rng('shuffle') before starting the parallel simulations.
 
-% Randomize randomness
-rng('shuffle')
+arguments
+    expParams 
+    nMC 
+    baseSeed = []
+end
+
+if isfield(expParams,"rngSetts") || isfield(expParams,"rngSeed")
+    fprintf("There are rng settings present in experiment parameters! We shall remove them.")
+    expParams = rmfield(expParams, {'rngSetts', 'rngSeed'});
+end
 
 results = cell(nMC,1);
 
@@ -12,7 +25,11 @@ tic
 parfor i = 1:nMC
     params = expParams;
     params.expTitle = params.expTitle + sprintf("_worker%i", i);
-    [xRec, thetaRec, thetaOccur] = aggWithDelaySpeedup(params) % rng can not be controlled in parallel calculations
-    results{i} = struct("xRec", xRec, "thetaRec", thetaRec, "thetaOccur", thetaOccur)
+    if ~isempty(baseSeed)
+        params.rngSeed = baseSeed + i; % Set the random seed for the worker
+    end
+    initRngState = rng;
+    [xRec, thetaRec, thetaOccur, xInitHist, xHist, rngSetts] = aggWithDelaySpeedup(params)
+    results{i} = struct("xRec", xRec, "thetaRec", thetaRec, "thetaOccur", thetaOccur, "xInitHist", xInitHist, "xHist", xHist, "rngSetts", rngSetts, "initRngState", initRngState)
 end
 time = toc;

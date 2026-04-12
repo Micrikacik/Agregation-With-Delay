@@ -5,13 +5,13 @@ clearvars
 
 %parameter settings for the DBSCAN method
 epsilon = 0.05;
-minpts = 12;
+minpts = 17;
 
 %Number of runs in each Monte-Carlo simulation
 nMC = 100;
 
 %number of values of stepDelay
-stepDelays = 0:30:300;
+stepDelays = 0:30:420;
 NStepDelays = size(stepDelays,2);
 delayType = "Reaction";
 d = 2;
@@ -22,6 +22,9 @@ N=400;
 
 %pre-allocation
 clsizes = double.empty(NStepDelays,0);
+cls_mean = double.empty(NStepDelays,0);
+cls_min = double.empty(NStepDelays,0);
+cls_max = double.empty(NStepDelays,0);
 
 for K=1:NStepDelays
 
@@ -45,8 +48,13 @@ for K=1:NStepDelays
         idx = dbscan(dist,epsilon,minpts,'Distance','precomputed');
 
         %plot
-        gscatter(xx(:,1),xx(:,2),idx); getframe;
-        %pause;
+        % if stepDelay == 330
+        % p = subplot(10,10,i)
+        %      gscatter(xx(:,1),xx(:,2),idx); getframe;
+        %      hLeg = legend(p)
+        %      set(hLeg,'visible','off')
+        %     pause;
+        % end
 
         %number of outliers
         outliers(K,i) = sum(idx == -1);
@@ -69,20 +77,24 @@ for K=1:NStepDelays
 
     end
 
-    
     %process cluster sizes
     cls = clsizes(K,clsizes(K,:)>0);
+    if isempty(cls)
+        cls = 0;
+    end
     cls_mean(K) = mean(cls);
+    cls_med(K) = median(cls);
     cls_min(K) = double(min(cls));
     cls_max(K) = double(max(cls));
 
 end
 
-
-
 %plot cluster sizes
 subplot(2,2,1);
+hold on
 errorbar(1:NStepDelays, cls_mean, cls_mean-cls_min, -cls_mean+cls_max, 'LineWidth',2);
+plot(1:NStepDelays, cls_med)
+hold off
 axis([1 NStepDelays -1 400]);
 % Create ylabel
 ylabel({'cluster size'});
@@ -93,24 +105,30 @@ title({'min, avg and max cluster size'});
 
 %plot number of clusters
 subplot(2,2,2);
+hold on
 errorbar(1:NStepDelays, mean(numclusters'), mean(numclusters')-min(numclusters'), -mean(numclusters')+max(numclusters'), 'LineWidth',2);
+plot(1:NStepDelays, median(numclusters'))
+hold off
 axis([1 NStepDelays -1 16]);
 % Create ylabel
 ylabel({'number of clusters'});
 % Create xlabel
-xlabel({'K'});
+xlabel({'stepDelay'});
 % Create title
 title({'min, avg and max number of clusters'});
 
 
 %plot number of outliers
 subplot(2,2,3);
+hold on
 errorbar(1:NStepDelays, mean(outliers'), mean(outliers')-min(outliers'), -mean(outliers')+max(outliers'), 'LineWidth',2);
+plot(1:NStepDelays, median(outliers'))
+hold off
 axis([1 NStepDelays -1 400]);
 % Create ylabel
 ylabel({'number of outliers'});
 % Create xlabel
-xlabel({'K'});
+xlabel({'stepDelay'});
 % Create title
 title({'min, avg and max number of outliers'});
 
@@ -122,7 +140,6 @@ axis([1 NStepDelays -10 110]);
 % Create ylabel
 ylabel({'percentage'});
 % Create xlabel
-xlabel({'K'});
+xlabel({'stepDelay'});
 % Create title
 title({'% of cluster-free outcomes'});
-
