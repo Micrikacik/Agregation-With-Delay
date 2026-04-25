@@ -41,7 +41,7 @@ kappa = pi^(d/2) / gamma(d / 2 + 1);  % volume of a unit d-ball
 intRad_1 = 0.05^2 / 2 * pi;
 intRad = (kappa_1 / kappa * intRad_1)^(1/d);         % interaction radius
 epsilon = intRad;
-minpts = 12 * (N / volume / 400);
+minpts = ceil(17 * (N / volume / 400));
 
 switch boundConds
     case "Periodic"

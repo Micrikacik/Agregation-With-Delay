@@ -61,13 +61,13 @@ function [xRec, thetaRec, thetaOccur, xInitHist, xHist, rngSetts] = aggWithDelay
 %           same size as 'markAgents'. In each row must be an eligible RGB
 %           triplet, which indicates what color to mark the agent with 
 %           (specified by 'markAgents' index in the same row).
-%       stepRecMod (positive integer or 0 or -1) - simulation records the t-th matrix 
+%       stepRecMod (positive integer or -1) - simulation records the t-th matrix 
 %           of positions if the reminder of t divided by 'stepRecMod' is zero. 
 %           Last matrix is always recorded.
 %           If stepRecMod = -1, then only the last matrix is recorded.
 %       recInitStep (logical) - if true, then the initial positions matrix
 %           x0 is recorded to xRec(:,:,1).
-%       thetaRecMod (positive integer or 0 or -1) - simulation records the t-th average
+%       thetaRecMod (positive integer or -1) - simulation records the t-th average
 %           density vector (theta) and its delayed value if the reminder of t 
 %           divided by 'thetaRecMod' is zero.e 
 %           Last vector is always recorded.
@@ -78,7 +78,7 @@ function [xRec, thetaRec, thetaOccur, xInitHist, xHist, rngSetts] = aggWithDelay
 %           and its delayed value are recorded to thetaRec(:,:,1).
 %           If no value is specified, then the value of 'recInitStep' is
 %           used instead.
-%       thetaOccurMod (positive integer or 0 or -1) - simulation records the 
+%       thetaOccurMod (positive integer or -1) - simulation records the 
 %           occurances of an agents with specific numbers of actual neighbours 
 %           and delayed neighbours in the t-th step, if the reminder of t 
 %           divided by 'thetaOccurMod' is zero.
@@ -470,8 +470,8 @@ thetaOccur = zeros(N+1,N+1);    % 1 <= number of neighbours <= N
 % Count initial occurances (so the edge case T = 0 works properly)
 if thetaOccurMod ~= -1
     intCountsRealTime = getIntCountsFromDSqrd(getDistsSqrd(x,x));
-    intCounts = getIntCountsFromDSqrd(getDelayedDistsSqrd(x,xHist,histCoeff,delayType));
-    indexes = [intCountsRealTime(:),intCounts(:)] + 1; % Shift by one to include case where intCount is 0
+    intCountsDelayed = getIntCountsFromDSqrd(getDelayedDistsSqrd(x,xHist,histCoeff,delayType));
+    indexes = [intCountsRealTime(:),intCountsDelayed(:)] + 1; % Shift by one to include case where intCount is 0
     thetaOccur = accumarray(indexes, 1, size(thetaOccur));
 end
 
@@ -493,7 +493,7 @@ for t=1:T
     % Vector, where i-th element is the count of agents 
     % in the interaction radius of the i-th agent (including the i-th)
     if memorizable % We have already calculated it in the past
-        intCounts = intCountsHist(:,histCoeff);
+        intCountsDelayed = intCountsHist(:,histCoeff);
         % Update the history
         DSqrd = getDistsSqrd(x,x); % We calculate the current one to be used int the future
         intCountsRealTime = getIntCountsFromDSqrd(DSqrd);
@@ -501,11 +501,11 @@ for t=1:T
         % The hist coeff will be updated later
     else % We must calculate it anew
         DSqrd = getDelayedDistsSqrd(x,xHist,histCoeff,delayType);
-        intCounts = getIntCountsFromDSqrd(DSqrd);
+        intCountsDelayed = getIntCountsFromDSqrd(DSqrd);
     end
 
     if delayType == "None"
-        intCountsRealTime = intCounts;
+        intCountsRealTime = intCountsDelayed;
     end
 
     % Update history of x and histCoeff before changing x
@@ -529,14 +529,14 @@ for t=1:T
             
             % Count the occurrences of the theta couples and add them to
             % the whole count
-            indexes = [intCountsRealTime(:),intCounts(:)] + 1; % Shift by one to include case where intCount is 0
+            indexes = [intCountsRealTime(:),intCountsDelayed(:)] + 1; % Shift by one to include case where intCount is 0
             prevStepThetaOccur = accumarray(indexes, 1, size(thetaOccur));
             thetaOccur = thetaOccur + prevStepThetaOccur;
         end
     end
     
     % Local density
-    theta = getThetaFromIntCounts(intCounts);
+    thetaDelayed = getThetaFromIntCounts(intCountsDelayed);
 
     % Record theta from the previous (t-1) step 
     % (to reduce calls of getDelayedDistsSqrd())
@@ -550,13 +550,13 @@ for t=1:T
 
             thetaRealTime = getThetaFromIntCounts(intCountsRealTime);
             thetaRec(:,1,thetaRecIndex) = thetaRealTime;
-            thetaRec(:,2,thetaRecIndex) = theta;
+            thetaRec(:,2,thetaRecIndex) = thetaDelayed;
             thetaRecIndex = thetaRecIndex + 1;
         end
     end
         
     % Diffusivity
-    G_vals = exp(-theta);
+    G_vals = exp(-thetaDelayed);
             
     % Calculate the update
     updt = G_vals .* randn(N,d);

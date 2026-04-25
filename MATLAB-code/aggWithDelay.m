@@ -48,6 +48,7 @@ function [xRec, thetaRec, xHist, rngSetts] = aggWithDelay(expParams)
 %       TIME & DELAY:
 %       T (positive integer) - number of time steps.
 %       dt (positive float) - time step length.
+%       
 %       delayType (string) - type of the delay.
 %           Must be one of the following strings:
 %               "Reaction"

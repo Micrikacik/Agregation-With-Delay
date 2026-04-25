@@ -1,4 +1,4 @@
-function [xRec, thetaRec, thetaOccur, xInitHist, xHist, rngSetts] = aggWithDelaySpeedup(expParams)
+function [xRec, thetaRec, thetaOccur, xInitHist, xHist, rngSetts] = aggWithDelaySpeedupOld(expParams)
 
 % Runs the discrete simulation of agregation with a constant delay.
 %
@@ -61,13 +61,13 @@ function [xRec, thetaRec, thetaOccur, xInitHist, xHist, rngSetts] = aggWithDelay
 %           same size as 'markAgents'. In each row must be an eligible RGB
 %           triplet, which indicates what color to mark the agent with 
 %           (specified by 'markAgents' index in the same row).
-%       stepRecMod (positive integer or 0 or -1) - simulation records the t-th matrix 
+%       stepRecMod (positive integer or -1) - simulation records the t-th matrix 
 %           of positions if the reminder of t divided by 'stepRecMod' is zero. 
 %           Last matrix is always recorded.
 %           If stepRecMod = -1, then only the last matrix is recorded.
 %       recInitStep (logical) - if true, then the initial positions matrix
 %           x0 is recorded to xRec(:,:,1).
-%       thetaRecMod (positive integer or 0 or -1) - simulation records the t-th average
+%       thetaRecMod (positive integer or -1) - simulation records the t-th average
 %           density vector (theta) and its delayed value if the reminder of t 
 %           divided by 'thetaRecMod' is zero.e 
 %           Last vector is always recorded.
@@ -78,7 +78,7 @@ function [xRec, thetaRec, thetaOccur, xInitHist, xHist, rngSetts] = aggWithDelay
 %           and its delayed value are recorded to thetaRec(:,:,1).
 %           If no value is specified, then the value of 'recInitStep' is
 %           used instead.
-%       thetaOccurMod (positive integer or 0 or -1) - simulation records the 
+%       thetaOccurMod (positive integer or -1) - simulation records the 
 %           occurances of an agents with specific numbers of actual neighbours 
 %           and delayed neighbours in the t-th step, if the reminder of t 
 %           divided by 'thetaOccurMod' is zero.
@@ -88,6 +88,10 @@ function [xRec, thetaRec, thetaOccur, xInitHist, xHist, rngSetts] = aggWithDelay
 %           If no value is specified, then the value of 'thetaRecMod' is
 %           used instead.
 %       expTitle (string) - title to be printed before the experiment begins
+%       recordVideoPath (string) - if provided, script records the plotted
+%           positions as video onto this given path. This path should
+%           include the filename, but NOT the file extension. It will be
+%           saved as '.avi'.
 %
 % OUTPUT:
 %   xRec (float matrix) - 3 dimensional matrix of all recorded matrices of
@@ -110,9 +114,10 @@ function [xRec, thetaRec, thetaOccur, xInitHist, xHist, rngSetts] = aggWithDelay
 %       Rows represent all the possible amounts of agent within 
 %       the interaction radius of one agent. 
 %       Columns represent all the possible amounts of agents within 
-%       the interaction radius of one agent, while taking into account used delay. 
+%       the interaction radius of one agent, shifted by one to right 
+%       (i.e. (1,1) represents (0,0)), while taking into account used delay. 
 %       Element recTheta(i,j) is then the number of ocurrences of an
-%       agent, who had i actual neighbours and j delayed neighbours, in
+%       agent, who had i-1 actual neighbours and j-1 delayed neighbours, in
 %       any step which was recorded based on 'thetaRecMod'.
 %   xHist (float matrix) - 3 dimensional matrix of the last history of
 %       positions, which still affect the following simulation steps.
@@ -406,6 +411,16 @@ if ~isempty(markColors)
     scatterColors(markAgents,:) = markColors;
 end
 
+% Setup VideoWriter if the simulation is recorded
+recordVideo = false;
+if isfield(expParams,"recordVideoPath") && isstring(expParams.recordVideoPath)
+    recordVideo = true;
+    vidWrit = VideoWriter(sprintf("%s.avi",expParams.recordVideoPath));
+    frameTime = stepPlotMod * dt;
+    vidWrit.FrameRate = 1 / frameTime;
+    open(vidWrit)
+end
+
 % Set output variables
 
 % Auxiliary function to determine the count of to be recorded steps
@@ -454,9 +469,10 @@ thetaOccur = zeros(N+1,N+1);    % 1 <= number of neighbours <= N
 
 % Count initial occurances (so the edge case T = 0 works properly)
 if thetaOccurMod ~= -1
-    interCountsRealTime = getInterCountsFromDSqrd(getDistsSqrd(x,x));
-    interCounts = getInterCountsFromDSqrd(getDelayedDistsSqrd(x,xHist,histCoeff,delayType));
-    thetaOccur = accumarray([interCountsRealTime(:),interCounts(:)]+1, 1, size(thetaOccur));
+    intCountsRealTime = getIntCountsFromDSqrd(getDistsSqrd(x,x));
+    intCountsDelayed = getIntCountsFromDSqrd(getDelayedDistsSqrd(x,xHist,histCoeff,delayType));
+    indexes = [intCountsRealTime(:),intCountsDelayed(:)] + 1; % Shift by one to include case where intCount is 0
+    thetaOccur = accumarray(indexes, 1, size(thetaOccur));
 end
 
 % Simulate for t=1:T, this loop calculates the  step t from the step t-1
@@ -464,7 +480,7 @@ for t=1:T
     % Distance matrix
     DSqrd = getDelayedDistsSqrd(x,xHist,histCoeff,delayType);
 
-    % Update history of x before changing x
+    % Update history of x and histCoeff before changing x
     if delayType ~= "None"
         xHist(:,:,histCoeff) = x;
         histCoeff = histCoeff - 1;
@@ -475,36 +491,38 @@ for t=1:T
 
     % Vector, where i-th element is the count of agents 
     % in the interaction radius of the i-th agent (including the i-th)
-    interCounts = getInterCountsFromDSqrd(DSqrd);
+    intCountsDelayed = getIntCountsFromDSqrd(DSqrd);
     
     % Count theta occurrences from the previous (t-1) step 
     % (to reduce calls of getDelayedDistsSqrd())
     if t > 1 % Initial step is already recorded
         if thetaOccurMod ~= -1 && mod(t-1,thetaOccurMod) == 0
-            interCountsRealTime = getInterCountsFromDSqrd(getDistsSqrd(x,x));
+            intCountsRealTime = getIntCountsFromDSqrd(getDistsSqrd(x,x));
             
             % Count the occurrences of the theta couples and add them to
             % the whole count
-            prevStepThetaOccur = accumarray([interCountsRealTime(:),interCounts(:)]+1, 1, size(thetaOccur));
+            indexes = [intCountsRealTime(:),intCountsDelayed(:)] + 1; % Shift by one to include case where intCount is 0
+            prevStepThetaOccur = accumarray(indexes, 1, size(thetaOccur));
             thetaOccur = thetaOccur + prevStepThetaOccur;
         end
     end
     
     % Local density
-    theta = getThetaFromInterCounts(interCounts);
+    thetaDelayed = getThetaFromIntCounts(intCountsDelayed);
 
     % Record theta from the previous (t-1) step 
     % (to reduce calls of getDelayedDistsSqrd())
     if t > 1 % Initial step is already recorded
         if thetaRecMod ~= -1 && mod(t-1,thetaRecMod) == 0
-            thetaRec(:,1,thetaRecIndex) = getTheta(getDistsSqrd(x,x));
-            thetaRec(:,2,thetaRecIndex) = theta;
+            thetaRealTime = getThetaFromIntCounts(intCountsRealTime);
+            thetaRec(:,1,thetaRecIndex) = thetaRealTime;
+            thetaRec(:,2,thetaRecIndex) = thetaDelayed;
             thetaRecIndex = thetaRecIndex + 1;
         end
     end
         
     % Diffusivity
-    G_vals = exp(-theta);
+    G_vals = exp(-thetaDelayed);
             
     % Calculate the update
     updt = G_vals .* randn(N,d);
@@ -540,19 +558,24 @@ for t=1:T
 end
 
 function plotSimStep(theta)
+    f = [];
     switch d
         case 1
             scatter(x(:,1),theta,[],scatterColors); 
             axis([0 1 0 1]);
-            getframe;
+            f = getframe;
         case 2
             scatter(x(:,1),x(:,2),[],scatterColors); 
             axis([0 1 0 1]);
-            getframe;
+            f = getframe;
         case 3
             scatter3(x(:,1),x(:,2),x(:,3),[],scatterColors);
             axis([0 1 0 1 0 1]);
-            getframe;
+            f = getframe;
+    end
+
+    if recordVideo && ~isempty(f)
+        writeVideo(vidWrit,f)
     end
 end
 
@@ -591,19 +614,24 @@ end
 
 % Calculates the local density from the ((partially) delayed) distance matrix DSqrd
 function theta = getTheta(DSqrd)
-    theta = getThetaFromInterCounts(getInterCountsFromDSqrd(DSqrd));
+    theta = getThetaFromIntCounts(getIntCountsFromDSqrd(DSqrd));
 end
 
 % Calculates the local density of any i-th agent from the given numbers of
 % agents that are in the interaction radius of that i-th agent (returns the vector theta)
-function theta = getThetaFromInterCounts(interCounts)
-    theta = interCounts / W_norm / N;
+function theta = getThetaFromIntCounts(intCounts)
+    theta = intCounts / W_norm / N;
 end
 
 % Calculates the number of agents in the interaction radius of any i-th
 % agent (returns a vector of these numbers)
-function interCounts = getInterCountsFromDSqrd(DSqrd)
-    interCounts = sum((DSqrd < intRadSqrd),2);
+function intCounts = getIntCountsFromDSqrd(DSqrd)
+    intCounts = sum((DSqrd < intRadSqrd),2);
+end
+
+% Close video writer
+if recordVideo
+    close(vidWrit)
 end
 
 % Record final simulation step (the final step might not have been possible to record in the loop)

@@ -18,7 +18,7 @@ arguments
     fileName = "MCData"
 end
 
-T = 1e+6;
+T = 1e+1;
 
 baseParams = struct( ...
         ...% No rng controll
