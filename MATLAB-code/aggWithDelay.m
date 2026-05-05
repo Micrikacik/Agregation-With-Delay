@@ -46,7 +46,7 @@ function [xRec, thetaRec, xHist, rngSetts] = aggWithDelay(expParams)
 %               "Reflective"
 %
 %       TIME & DELAY:
-%       T (positive integer) - number of time steps.
+%       stepCount (positive integer) - number of time steps.
 %       dt (positive float) - time step length.
 %       delayType (string) - type of the delay.
 %           Must be one of the following strings:
@@ -259,14 +259,14 @@ end
 %------------------------------TIME-&-DELAY---------------------------------
 
 % Step count
-if ~isfield(expParams,"T") || ~IsInteger(expParams.T) || expParams.T < 0 || ...
-        ~isequal(size(expParams.T),[1,1])
-    fprintf("Either no or wrong value for the number of time steps 'T'.\n")
-    T = 1000;                    % default number of time steps
-    fprintf("Setting T = %i.\n\n", T)
+if ~isfield(expParams,"stepCount") || ~IsInteger(expParams.stepCount) || expParams.stepCount < 0 || ...
+        ~isequal(size(expParams.stepCount),[1,1])
+    fprintf("Either no or wrong value for the number of time steps 'stepCount'.\n")
+    stepCount = 1000;                    % default number of time steps
+    fprintf("Setting stepCount = %i.\n\n", stepCount)
 else
-    T = expParams.T;
-    fprintf("T = %i.\n\n", T)
+    stepCount = expParams.stepCount;
+    fprintf("stepCount = %i.\n\n", stepCount)
 end
 
 % Time step length
@@ -409,15 +409,15 @@ histCoeff = stepDelay;
 function count = getRecCount(module)
     count = 0;
     if module > 1
-        count = floor(T / module);
+        count = floor(stepCount / module);
         % To not record last step twice
-        if mod(T, module) == 0
+        if mod(stepCount, module) == 0
             count = count - 1;
         end
     else
         % Record every step
         if module ~= -1
-            count = T - 1;
+            count = stepCount - 1;
         end
     end
 end
@@ -461,8 +461,8 @@ volume = prod(dims);
 scatterColors = repmat([0.1,0.6,1],[N,1]); % Unmarked color
 scatterColors(markAgents,:) = markColors;
 
-% Simulate for t=1:T, this loop calculates the  step t from the step t-1
-for t=1:T
+% Simulate for t=1:stepCount, this loop calculates the  step t from the step t-1
+for t=1:stepCount
     % Distance matrix
     D = getDelayedDists(x,xHist,histCoeff,delayType);
 
@@ -515,8 +515,8 @@ for t=1:T
     end
 
     % Record simulation step
-    if t < T % Last step is recorded after this loop
-        if stepRecMod ~= -1 && mod(t,stepRecMod) == 0 && t < T
+    if t < stepCount % Last step is recorded after this loop
+        if stepRecMod ~= -1 && mod(t,stepRecMod) == 0 && t < stepCount
             xRec(:,:,xRecIndex) = x;
             xRecIndex = xRecIndex + 1;
         end

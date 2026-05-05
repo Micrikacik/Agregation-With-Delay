@@ -34,8 +34,10 @@ function [xRec, thetaRec, thetaOccur, xInitHist, xHist, rngSetts] = aggWithDelay
 %               "Reflective"
 %
 %       TIME & DELAY:
-%       T (positive integer) - number of time steps.
 %       dt (positive float) - time step length.
+%       stepCount (positive integer) - number of time steps.
+%       T (positive float) - total time of the simulation, alternative to 
+%           'stepCount', which will be 'stepCount = T / dt', if not provided.
 %       delayType (string) - type of the delay.
 %           Must be one of the following strings:
 %               "Reaction"
@@ -83,7 +85,7 @@ function [xRec, thetaRec, thetaOccur, xInitHist, xHist, rngSetts] = aggWithDelay
 %           and delayed neighbours in the t-th step, if the reminder of t 
 %           divided by 'thetaOccurMod' is zero.
 %           The first step is always counted.
-%           The last step is counted only if mod(T,thetaOccurMod) == 0.
+%           The last step is counted only if mod(stepCount,thetaOccurMod) == 0.
 %           If thetaOccurMod = -1, then no in-between steps are counted.
 %           If no value is specified, then the value of 'thetaRecMod' is
 %           used instead.
@@ -236,17 +238,6 @@ end
 
 %------------------------------TIME-&-DELAY---------------------------------
 
-% Step count
-if ~isfield(expParams,"T") || ~IsInteger(expParams.T) || expParams.T < 0 || ...
-        ~isequal(size(expParams.T),[1,1])
-    fprintf("Either no or wrong value for the number of time steps 'T'.\n")
-    T = 1000;                    % default number of time steps
-    fprintf("Setting T = %i.\n\n", T)
-else
-    T = expParams.T;
-    fprintf("T = %i.\n\n", T)
-end
-
 % Time step length
 if ~isfield(expParams,"dt") || ~isfloat(expParams.dt) || expParams.dt <= 0 || ...
         ~isequal(size(expParams.dt),[1,1])
@@ -256,6 +247,25 @@ if ~isfield(expParams,"dt") || ~isfloat(expParams.dt) || expParams.dt <= 0 || ..
 else
     dt = expParams.dt;
     fprintf("dt = %.3d\n\n", dt)
+end
+
+% Step count
+if ~isfield(expParams,"stepCount") || ~IsInteger(expParams.stepCount) || expParams.stepCount < 0 || ...
+        ~isequal(size(expParams.stepCount),[1,1])
+    fprintf("Either no or wrong value for the number of time steps 'stepCount'.\n")
+    if ~isfield(expParams,"T") || ~isfloat(expParams.T) || expParams.T < 0 || ...
+        ~isequal(size(expParams.T),[1,1])
+        fprintf("Either no or wrong value for the total simulation time 'T'.\n")
+        stepCount = 1000;                    % default number of time steps
+        fprintf("Setting stepCount = %i.\n\n", stepCount)
+    else
+        T = expParams.T;
+        stepCount = T / dt;
+        fprintf("T = %i & stepCount = %i.\n\n", T, stepCount)
+    end
+else
+    stepCount = expParams.stepCount;
+    fprintf("stepCount = %i.\n\n", stepCount)
 end
 
 % Delay type
@@ -427,7 +437,7 @@ end
 function count = getRecCount(module)
     % We do not want to record
     if module > 0
-        count = ceil(T / module);
+        count = ceil(stepCount / module);
         if count == 0
             count = 1; % We always record the last step
         end
@@ -467,7 +477,7 @@ end
 % Setup to count occurances
 thetaOccur = zeros(N+1,N+1);    % 1 <= number of neighbours <= N
 
-% Count initial occurances (so the edge case T = 0 works properly)
+% Count initial occurances (so the edge case stepCount = 0 works properly)
 if thetaOccurMod ~= -1
     intCountsRealTime = getIntCountsFromDSqrd(getDistsSqrd(x,x));
     intCountsDelayed = getIntCountsFromDSqrd(getDelayedDistsSqrd(x,xHist,histCoeff,delayType));
@@ -475,8 +485,8 @@ if thetaOccurMod ~= -1
     thetaOccur = accumarray(indexes, 1, size(thetaOccur));
 end
 
-% Simulate for t=1:T, this loop calculates the  step t from the step t-1
-for t=1:T
+% Simulate for t=1:stepCount, this loop calculates the  step t from the step t-1
+for t=1:stepCount
     % Distance matrix
     DSqrd = getDelayedDistsSqrd(x,xHist,histCoeff,delayType);
 
@@ -549,7 +559,7 @@ for t=1:T
     end
 
     % Record simulation step
-    if t < T % Last step is recorded after this loop (since we could get mod(T,stepRecMod) ~= 0, so we record it specially after the loop)
+    if t < stepCount % Last step is recorded after this loop (since we could get mod(stepCount,stepRecMod) ~= 0, so we record it specially after the loop)
         if stepRecMod ~= -1 && mod(t,stepRecMod) == 0
             xRec(:,:,xRecIndex) = x;
             xRecIndex = xRecIndex + 1;

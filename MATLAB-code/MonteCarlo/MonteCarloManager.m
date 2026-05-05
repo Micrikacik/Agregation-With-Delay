@@ -18,7 +18,7 @@ arguments
     fileName = "MCData"
 end
 
-T = 1e+1;
+stepCount = 1e+6;
 
 baseParams = struct( ...
         ...% No rng controll
@@ -28,7 +28,7 @@ baseParams = struct( ...
         "d", d, ...% FIXED
         ...% Default intRad
         ...% Default boundConds
-        "T", T, ...% FIXED
+        "stepCount", stepCount, ...% FIXED
         "dt", 1e-3, ...% FIXED
         "delayType", delayType, ...% FIXED
         ...% VARIABLE step delay - will be set later to make multiple params
@@ -37,7 +37,7 @@ baseParams = struct( ...
         "stepPlotMod", -2, ...% FIXED
         ...% No agent marking
         ...% No color for agent marking
-        "stepRecMod", ceil(T/min(T,100)), ...% FIXED - record either all or up to 100 steps
+        "stepRecMod", ceil(stepCount/min(stepCount,100)), ...% FIXED - record either all or up to 100 steps
         "recInitStep", true, ...% FIXED
         ...% Same rec mod for theta as for x
         ...% Record initial theta if recording initial x
