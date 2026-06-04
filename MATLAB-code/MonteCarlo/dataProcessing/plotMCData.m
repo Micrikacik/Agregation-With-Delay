@@ -26,7 +26,7 @@ else
 end
 
 if ~isfield(plotData,'histograms')
-    plotData.histograms = false;
+    plotData.histograms = true;
 else
     validateattributes(plotData.histograms,{'logical'},{'scalar'})
 end
@@ -44,7 +44,7 @@ else
 end
 
 if ~isfield(plotData,'variances')
-    plotData.variances = false;
+    plotData.variances = true;
 else
     validateattributes(plotData.variances,{'logical'},{'scalar'})
 end

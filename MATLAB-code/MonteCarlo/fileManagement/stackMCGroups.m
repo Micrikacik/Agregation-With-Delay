@@ -1,21 +1,20 @@
-clearvars
-clc
+function [] = stackMCGroups(d, stepDelays, delayType, exceptFields, infoFile, fileName)
 
-delayType = "Reaction";
-d = 2;
-% stepDelays = [0,60:30:420];
-stepDelays = [0,90:30:300];
-% fileName = "MCData";
-fileName = "RepairData";
-% infoFile = "info";
-infoFile = "DUPLICATE_info";
+arguments
+    d 
+    stepDelays 
+    delayType 
+    exceptFields (:,1) string = []
+    infoFile (1,1) string = "info"
+    fileName (1,1) string = "MCData"
+end
 
 for stepDelay = stepDelays
-    folderPath = MCFolderPath(delayType, 2, stepDelay);
+    folderPath = MCFolderPath(delayType, d, stepDelay);
     info = load(sprintf("%s/%s.mat", folderPath, infoFile));
     poolsize = info.poolsize;
     groupCount = info.groupCount;
-    stackedResults = {}; % start as an empty cell
+    stackedResults = struct([]); % start as an empty struct array
     time = 0;
     params = 0;
     for group = 1:groupCount
@@ -28,7 +27,11 @@ for stepDelay = stepDelays
         params = experiment.params;
         time = time + experiment.time;
         results = experiment.results;
-        stackedResults = [stackedResults; results];
+        for field = exceptFields
+            results = rmfield(results,field);
+        end
+        stackedResults = [  stackedResults;
+                            results         ];
         fprintf("%i",group)
     end
     fprintf(" saving file ...")

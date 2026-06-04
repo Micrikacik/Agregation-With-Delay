@@ -1,11 +1,33 @@
-function D = torusDistancesSqrd(x_1,x_2)
-% x_1, x_2 are Nxd, all d coordinates of all N agents in [0,1]^d
-% D will be NxN (symmetric) SQUARED-distance matrix on the torus where rowrs
-% correspond to x_1 and columns correspond to x_2
+function D = torusDistancesSqrd(x_1,x_2,dims)
+
+% Calculates euclidian distances SQUARED on torus with dimensions 'dims'
+% (as a periodic hypercube) between the positions in 'x_1' and 'x_2', 
+% returning a distance matrix 'D'.
+% This function is fast implementation of torusDistances.m, but needs 
+% special output usage (returns SQUARED distances).
+%
+% INPUT:
+%   x_1, x_2 (float matrices) - N by d matrices, each row represents
+%       position vector, 
+%       distances are calculated between vectors x_1(i,:) and x_2(j,:)
+%   dims (float vector) - vector of length d (second dimension of 
+%   'x_1, x_2'), values represent dimensions of the torus (as a periodic 
+%   hypercube), i.e., TODO
+%       
+%
+% OUTPUT:
+%   D (nonnegative float matrix) - N by N (symmetric) distance matrix,
+%       element D(i,j) is SQUARED distance on torus with dimensions 'dims'
+%       "||x_1(i,:) - x_2(j,:)||^2" ()
 
 arguments
-    x_1
-    x_2 = x_1
+    x_1 (:,:) float
+    x_2 (:,:) float = x_1 
+    dims = ones(1,size(x_1,2))
+end
+
+if size(x_2) ~= size(x_1)
+    error("Wrong dimensions of input matrices")
 end
 
 d = size(x_1,2);
@@ -20,7 +42,7 @@ switch d
         dx = abs(x_1(:,1) - x_2(:,1).');
         
         % apply periodic boundary conditions
-        dx = min(dx, 1 - dx);
+        dx = min(dx, dims(1) - dx);
         
         % calculate Euclidean distance
         D = dx.^2;
@@ -30,8 +52,8 @@ switch d
         dy = abs(x_1(:,2) - x_2(:,2).');
         
         % apply periodic boundary conditions
-        dx = min(dx, 1 - dx);
-        dy = min(dy, 1 - dy);
+        dx = min(dx, dims(1) - dx);
+        dy = min(dy, dims(2) - dy);
         
         % calculate Euclidean distance
         D = dx.^2 + dy.^2;
@@ -42,9 +64,9 @@ switch d
         dz = abs(x_1(:,3) - x_2(:,3).');
         
         % apply periodic boundary conditions
-        dx = min(dx, 1 - dx);
-        dy = min(dy, 1 - dy);
-        dz = min(dz, 1 - dz);
+        dx = min(dx, dims(1) - dx);
+        dy = min(dy, dims(2) - dy);
+        dz = min(dz, dims(3) - dz);
         
         % calculate Euclidean distance
         D = dx.^2 + dy.^2 + dz.^2;

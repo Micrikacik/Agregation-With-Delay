@@ -1,11 +1,11 @@
-function [xRec, thetaRec, thetaOccur, xInitHist, xHist, rngSetts] = aggWithDelaySpeedup(expParams)
+function [xRec, thetaRec, thetaOccur, xInitHist, xHist, rngSetts] = aggWithDelaySpeedupNoVolume(expParams)
 
 % Runs the discrete simulation of agregation with a constant delay.
 %
 %---------------------------------------------------------------------------
 %
 % INPUT:
-%   expParams (structure) - struct, which can contain following fields, if an important
+%   expParams - struct, which can contain following fields, if an important
 %       field is missing, default value is used. If no input is required,
 %       set to '{}'.
 %
@@ -25,11 +25,6 @@ function [xRec, thetaRec, thetaOccur, xInitHist, xHist, rngSetts] = aggWithDelay
 %           x(i,:) - position (float vector) in [0,1]^d of the i-th agent.
 %           Alternatively, instead of x0, set the dimension d and number of
 %           agents N.
-%       dims (positive float ROW vector) - dimensions of the simulation, i.e., dimensions
-%           of the box, in which the agents move.
-%           Thic row vector does NOT influence the parameter d, in fact, dims
-%           will be either truncated or filled up with 1, to match its
-%           length with d.
 %
 %       MODEL:
 %       intRad (positive float) - radius of interactions between agents.
@@ -207,22 +202,9 @@ else
     fprintf("x0 accepted, N = %i, d = %i.\n\n", N, d)
 end
 
-% Dimensions
-if ~isfield(expParams,"dims") || ~isfloat(expParams.dims) || any(expParams.dims <= 0) || ...
-        ~isequal(size(expParams.dims),[1,d])
-    fprintf("Either no or wrong value for the vector of dimensions 'dims'.\n")
-    dims = ones(1,d);           % default dimensions
-    fprintf("Setting all dimensions to 1.\n\n")
-else 
-    dims = expParams.dims;
-    fprintf("dims:")
-    disp(dims)
-end
-volume = prod(dims);
-
 % Setting random initial positions
 if isempty(x)
-    x = rand(N, d) .* (dims);
+    x = rand(N, d);
 end
 
 %----------------------------------MODEL------------------------------------
@@ -318,7 +300,7 @@ end
 if ~isfield(expParams,"xInitHist") || ~isfloat(expParams.xInitHist) || ...
         ~isequal(size(expParams.xInitHist),[N,d,stepDelay])
     fprintf("Either no or wrong value for the matrix of initial history of positions 'xInitHist'.\n")
-    xHist = genInitHist(x,dt,stepDelay,boundConds,dims);  % default initial history
+    xHist = genInitHist(x,dt,stepDelay,boundConds,ones(1,d));  % default initial history
     fprintf("Initializing experiment with 'blind motion' initial history.\n\n")
 else
     xHist = expParams.xInitHist;
@@ -596,11 +578,11 @@ for t=1:stepCount
     switch boundConds
         case "Periodic"
             % Periodic BCs
-            x = mod(x,dims);
+            x = mod(x,1);
         case "Reflective"
             % Reflective BCs
             x = abs(x);
-            x = dims - abs(dims - x);
+            x = 1 - abs(1 - x);
     end
 
     % Plot - to make correct 1D plot, we need current theta
@@ -623,16 +605,16 @@ function plotSimStep(theta)
     f = [];
     switch d
         case 1
-            scatter(x(:,1),theta./volume,[],scatterColors);
-            axis([0 dims(1) 0 1]);
+            scatter(x(:,1),theta,[],scatterColors); 
+            axis([0 1 0 1]);
             f = getframe;
         case 2
             scatter(x(:,1),x(:,2),[],scatterColors); 
-            axis([0 dims(1) 0 dims(2)]);
+            axis([0 1 0 1]);
             f = getframe;
         case 3
             scatter3(x(:,1),x(:,2),x(:,3),[],scatterColors);
-            axis([0 dims(1) 0 dims(2) 0 dims(3)]);
+            axis([0 1 0 1 0 1]);
             f = getframe;
     end
 
@@ -665,7 +647,7 @@ function DSqrd = getDistsSqrd(x_1,x_2)
     switch boundConds
         case "Periodic"
             % Distances on torus
-            DSqrd = torusDistancesSqrd(x_1,x_2,dims);
+            DSqrd = torusDistancesSqrd(x_1,x_2);
         case "Reflective"
             % Normal distances
             DSqrd = distancesSqrd(x_1,x_2);
@@ -682,7 +664,7 @@ end
 % Calculates the local density of any i-th agent from the given numbers of
 % agents that are in the interaction radius of that i-th agent (returns the vector theta)
 function theta = getThetaFromIntCounts(intCounts)
-    theta = intCounts / W_norm / N * volume;
+    theta = intCounts / W_norm / N;
 end
 
 % Calculates the number of agents in the interaction radius of any i-th
@@ -727,7 +709,7 @@ if stepPlotMod ~= -2
 
     fprintf("----------------------------------\n\n")
     fprintf("Plotting agregation groups.\n\n")
-    plotAgg(x,theta./volume,dims,boundConds)
+    plotAgg(x,theta,ones(1,d),boundConds)
 end
 
 end

@@ -80,6 +80,17 @@ fprintf("File name: %s\n\n", fileName)
 digitCountOfNMC = floor(log10(nMC + poolsize - 1)) + 1;
 baseSeed = [];
 
+% Save info files
+for stepDelay = stepDelays
+    folderPath = MCFolderPath(delayType,d,stepDelay,true);
+    infoPath = sprintf("%s/info.mat", folderPath);
+    if isfile(infoPath) && (overwrite == false)
+        fprintf("File on path \n%s \nalready exists, and overwriting is not allowed. Saving as 'DUPLICATE'.\n\n", infoPath)
+        infoPath = sprintf("%s/DUPLICATE_info.mat", folderPath);
+    end 
+    save(infoPath, "poolsize", "groupCount");
+end
+
 % Divide the run into groups, which have the same size as there is workers,
 % to be able to save a part of the results as soon as possible
 for group = startGroup:endGroup
@@ -104,15 +115,4 @@ for group = startGroup:endGroup
         end
         save(path, 'results', 'params', "poolsize", "time");
     end
-end
-
-% Save info files
-for stepDelay = stepDelays
-    folderPath = MCFolderPath(delayType,d,stepDelay);
-    infoPath = sprintf("%s/info.mat", folderPath);
-    if isfile(infoPath) && (overwrite == false)
-        fprintf("File on path \n%s \nalready exists, and overwriting is not allowed. Saving as 'DUPLICATE'.\n\n", infoPath)
-        infoPath = sprintf("%s/DUPLICATE_info.mat", folderPath);
-    end 
-    save(infoPath, "poolsize", "groupCount");
 end

@@ -1,17 +1,17 @@
 d = 2;
-delayType = "Reaction";
+delayType = "Transmission";
 fileName = "MCData";
 
 
 
-for stepDelay = 0:30:420
+for stepDelay = [10000:10000:100000]
     path = MCFilePath(MCFolderPath(delayType,d,stepDelay),fileName,MCFilePostfix(delayType,d,stepDelay));
     results = load(path).results;
     fprintf("Started %i\n", stepDelay)
     same = 0;
     for i = 1:length(results)
         for j = i+1:length(results)
-            if norm(results{i}.xRec(:,:,1) - results{j}.xRec(:,:,1), "fro") < 0.001
+            if norm(results(i).xRec(:,:,1) - results(j).xRec(:,:,1), "fro") < 0.001
                 fprintf("(%i,%i) ", i, j)
                 same = same + 1;
                 break

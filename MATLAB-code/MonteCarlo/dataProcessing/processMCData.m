@@ -36,7 +36,7 @@ end
 
 minpts = round(minpts);
 
-wBar = waitbar(0,"Processing...");
+wBar = waitbar(0,"Processing data...");
 
 %number of agents
 N = size(xData,1);
@@ -84,7 +84,7 @@ for i_MC=1:MCCount
     % Percentage of cluster-free outcomes
     clusterFreePercentage(i_MC) = 100 * nnz(clusterCounts(:,i_MC) == 0) / MCSize;
 
-    waitbar(i_MC / MCCount,wBar,"Processing...")
+    waitbar(i_MC / MCCount,wBar,"Processing data...")
 end
 
 % Fix clusterSizes format
@@ -132,6 +132,6 @@ end
 
 waitbar(1,wBar,"Plotting results...")
 
-plotMCData(plotData,N,outlierCountsStat,clusterCountsStat,clusterSizesStat,clusterFreePercentage)
+plotMCData(outlierCountsStat,clusterCountsStat,clusterSizesStat,clusterFreePercentage,[],N)
 
 close(wBar)

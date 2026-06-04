@@ -1,11 +1,26 @@
 function D = distancesSqrd(x_1,x_2)
-% x_1, x_2 are Nxd, all d coordinates of all N agents in [0,1]^d
-% D will be NxN (symmetric) SQUARED-distance matrix on the torus where rowrs
-% correspond to x_1 and columns correspond to x_2
+
+% Calculates euclidian distances SQUARED between the positions 
+% in 'x_1' and 'x_2', returning a distance matrix 'D'.
+% This function is fast implementation of distances.m, but needs special
+% output usage (returns SQUARED distances).
+%
+% INPUT:
+%   x_1, x_2 (float matrices) - N by d matrices, each row represents
+%       position vector, 
+%       distances are calculated between vectors x_1(i,:) and x_2(j,:)
+%
+% OUTPUT:
+%   D (nonnegative float matrix) - N by N (symmetric) distance matrix,
+%       element D(i,j) is SQUARED distance ||x_1(i,:) - x_2(j,:)||^2
 
 arguments
-    x_1
-    x_2 = x_1
+    x_1 (:,:) float
+    x_2 (:,:) float = x_1 
+end
+
+if size(x_2) ~= size(x_1)
+    error("Wrong dimensions of input matrices")
 end
 
 d = size(x_1,2);
