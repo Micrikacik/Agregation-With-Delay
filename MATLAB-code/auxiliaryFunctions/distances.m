@@ -13,8 +13,8 @@ function D = distances(x_1,x_2)
 %       element D(i,j) is distance ||x_1(i,:) - x_2(j,:)||
 
 arguments
-    x_1 (:,:) float
-    x_2 (:,:) float = x_1 
+    x_1 (:,:) double
+    x_2 (:,:) double = x_1 
 end
 
 if size(x_2) ~= size(x_1)

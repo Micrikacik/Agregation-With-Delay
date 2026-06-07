@@ -21,8 +21,8 @@ function D = torusDistancesSqrd(x_1,x_2,dims)
 %       "||x_1(i,:) - x_2(j,:)||^2" ()
 
 arguments
-    x_1 (:,:) float
-    x_2 (:,:) float = x_1 
+    x_1 (:,:) double
+    x_2 (:,:) double = x_1 
     dims = ones(1,size(x_1,2))
 end
 

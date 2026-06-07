@@ -35,6 +35,7 @@ function [xRec, thetaRec, thetaOccur, xInitHist, xHist, rngSetts] = aggWithDelay
 %       intRad (positive float) - radius of interactions between agents.
 %       boundConds (string) - type of the boundary conditions.
 %           Must be one of the following strings:
+%               "NoBoundary"
 %               "Periodic"
 %               "Reflective"
 %
@@ -188,7 +189,7 @@ if ~isfield(expParams,"x0") || ~isfloat(expParams.x0) || isempty(expParams.x0)
         N = single(expParams.N);
         fprintf("   N = %i.\n", N)
     end
-    if ~isfield(expParams,"d") || ~IsInteger(expParams.d) || expParams.d <= 1 || ...
+    if ~isfield(expParams,"d") || ~IsInteger(expParams.d) || expParams.d < 1 || ...
             ~isequal(size(expParams.d),[1,1])
         fprintf("   Either no or wrong value for the dimension 'd'.\n")
         d = 2;                  % default dimension of the space
@@ -231,10 +232,12 @@ end
 kappa = pi^(d/2) / gamma(d / 2 + 1);  % volume of a unit d-ball
 if ~isfield(expParams,"intRad") || ~isnumeric(expParams.intRad) || expParams.intRad < 0
     fprintf("Either no or wrong value for the interaction radius 'intRad'.\n")
-    kappa_1 = 2;    % "volume" of a unit 1-ball
-    kappa_2 = pi;   % "volume" of a unit 2-ball
-    intRad_1 = 0.05^2 / kappa_1 * kappa_2;              % interaction radius in 1D
-    intRad = (kappa_1 / kappa * intRad_1)^(1/d);        % interaction radius - it will be 0.05 in 2D
+    % kappa_1 = 2;    % "volume" of a unit 1-ball
+    kappa_2 = pi;                                       % "volume" of a unit 2-ball
+    % intRad_1 = 0.05^2 / kappa_1 * kappa_2;              % interaction radius in 1D
+    intRad_2 = 0.05;                                    % interaction radius in 2D
+    % intRad = (kappa_1 / kappa * intRad_1)^(1/d);        % interaction radius - it will be 0.05 in 2D
+    intRad = (kappa_2 / kappa * intRad_2^2)^(1/d);      % interaction radius in d-dim space
     fprintf("Setting intRad = %.3d\n\n", intRad)
 else
     intRad = expParams.intRad;
@@ -335,7 +338,7 @@ if ~isfield(expParams,"stepPlotMod") || ~IsInteger(expParams.stepPlotMod) || ...
         ((expParams.stepPlotMod <= 0) && expParams.stepPlotMod ~= -1 && expParams.stepPlotMod ~= -2) || ...
         ~isequal(size(expParams.stepPlotMod),[1,1])
     fprintf("Either no or wrong value for the step plot mod 'stepPlotMod'.\n")
-    stepPlotMod = 3;  % default step plot mod
+    stepPlotMod = 5;  % default step plot mod
     fprintf("Setting step plot mod to %i.\n\n", stepPlotMod)
 else
     stepPlotMod = expParams.stepPlotMod;
@@ -594,6 +597,8 @@ for t=1:stepCount
 
     % Apply BCs
     switch boundConds
+        case "NoBoundary"
+            % No BCs - do nothing
         case "Periodic"
             % Periodic BCs
             x = mod(x,dims);
@@ -601,6 +606,8 @@ for t=1:stepCount
             % Reflective BCs
             x = abs(x);
             x = dims - abs(dims - x);
+        otherwise
+            error('Invalid delay type.');
     end
 
     % Plot - to make correct 1D plot, we need current theta
@@ -663,6 +670,9 @@ end
 % Takes into account boundary conditions
 function DSqrd = getDistsSqrd(x_1,x_2)
     switch boundConds
+        case "NoBoundary"
+            % No BCs
+            DSqrd = distancesSqrd(x_1,x_2);
         case "Periodic"
             % Distances on torus
             DSqrd = torusDistancesSqrd(x_1,x_2,dims);

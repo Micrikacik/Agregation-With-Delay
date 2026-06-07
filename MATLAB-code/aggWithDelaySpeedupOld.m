@@ -183,7 +183,7 @@ if ~isfield(expParams,"x0") || ~isfloat(expParams.x0) || isempty(expParams.x0)
         N = single(expParams.N);
         fprintf("   N = %i.\n", N)
     end
-    if ~isfield(expParams,"d") || ~IsInteger(expParams.d) || expParams.d <= 1 || ...
+    if ~isfield(expParams,"d") || ~IsInteger(expParams.d) || expParams.d < 1 || ...
             ~isequal(size(expParams.d),[1,1])
         fprintf("   Either no or wrong value for the dimension 'd'.\n")
         d = 2;                  % default dimension of the space
@@ -317,7 +317,7 @@ if ~isfield(expParams,"stepPlotMod") || ~IsInteger(expParams.stepPlotMod) || ...
         ((expParams.stepPlotMod <= 0) && expParams.stepPlotMod ~= -1 && expParams.stepPlotMod ~= -2) || ...
         ~isequal(size(expParams.stepPlotMod),[1,1])
     fprintf("Either no or wrong value for the step plot mod 'stepPlotMod'.\n")
-    stepPlotMod = 3;  % default step plot mod
+    stepPlotMod = 5;  % default step plot mod
     fprintf("Setting step plot mod to %i.\n\n", stepPlotMod)
 else
     stepPlotMod = expParams.stepPlotMod;
