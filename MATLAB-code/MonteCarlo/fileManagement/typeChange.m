@@ -1,3 +1,7 @@
+%%%%%%%%%%%%%%%%%%%
+%%% TEMP SCRIPT %%%
+%%%%%%%%%%%%%%%%%%%
+
 d = 2;
 delayType = "Reaction";
 fileName = "MCData";

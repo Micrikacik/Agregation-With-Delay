@@ -1,3 +1,8 @@
+%%%%%%%%%%%%%%%%%%%
+%%% TEMP SCRIPT %%%
+%%%%%%%%%%%%%%%%%%%
+
+
 d = 2;
 delayType = "Transmission";
 fileName = "MCData";

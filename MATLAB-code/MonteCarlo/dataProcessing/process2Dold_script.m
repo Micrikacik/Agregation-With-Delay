@@ -1,3 +1,8 @@
+%%%%%%%%%%%%%%%%%%%
+%%% TEMP SCRIPT %%%
+%%%%%%%%%%%%%%%%%%%
+
+
 %loads the results of MonteCarlo_2D from 'data2D_K.mat'
 %evaluates the statistics and produces the plots
 

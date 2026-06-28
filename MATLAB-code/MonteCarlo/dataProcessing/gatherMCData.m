@@ -1,38 +1,54 @@
-function xData = gatherMCData(N, d, nMC, stepDelays, delayType, iRec, fileName)
+function xData = gatherMCData(expsParams, folderPathFunc, filePostfixFunc, nMC, iRec, fileName)
+
+% TODO
+% iRec (positive integer or -1) - index of the record to gather
 
 arguments
-    N 
-    d 
-    nMC 
-    stepDelays 
-    delayType
-    iRec = -1
-    fileName = "MCData"
+    expsParams (:,1) struct
+    folderPathFunc function_handle
+    filePostfixFunc function_handle
+    nMC (1,1) double {mustBeInteger, mustBePositive}
+    iRec (1,1) double {mustBeInteger} = -1
+    fileName (1,1) string = "MCData"
 end
 
-count = numel(stepDelays);
+count = length(expsParams);
+% There might be different values of N or d
+maxN = max([expsParams.N]);
+maxd = max([expsParams.d]);
 
-xData = zeros(N,d,nMC,count);
+% Preallocate matrix
+xData = zeros(maxN, maxd, nMC, count);
 
-wBar = waitbar(0,"Gathering data...");
+wString = "Gathering data ...";
+wBar = waitbar(0, wString);
 
-for i = 1:count
-    stepDelay = stepDelays(i);
-    folder = MCFolderPath(delayType,d,stepDelay);
-    postfix = MCFilePostfix(delayType,d,stepDelay);
-    file = MCFilePath(folder,fileName,postfix);
+for i_exp = 1:count
+    params = expsParams(i_exp);
+    folder = folderPathFunc(params, i_exp);
+    postfix = filePostfixFunc(params, i_exp);
+    file = MCFilePath(folder, fileName, postfix);
+
     results = load(file).results;
-    xRec = results.xRec;
-    len = size(xRec,3);
-    if iRec == -1
-        index = len;
-    else
-        index = mod(iRec - 1, len) + 1;
+
+    if nMC > length(results)
+        fprintf("The desired value of the input 'nMC' is larger than the actual amount of simulations for experiment %i.", i_exp)
+    end 
+
+    for i_sim = 1:min(nMC, length(results))
+        xRec = results(i_sim).xRec;
+
+        len = size(xRec,3);
+        if iRec == -1
+            index = len;
+        else
+            index = mod(iRec - 1, len) + 1;
+        end
+
+        xData(1:params.N, 1:params.d, i_sim, i_exp) = results(i_sim).xRec(:,:,index);
     end
-    for i_Sim = 1:nMC
-        xData(:, :, i_Sim, i) = results(i_Sim).xRec(:,:,index);
-    end
-    waitbar(i / count,wBar,"Gathering data...")
+
+    waitbar(i_exp / count, wBar, wString)
 end
 
 close(wBar)
