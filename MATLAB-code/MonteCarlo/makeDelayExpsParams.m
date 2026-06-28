@@ -12,8 +12,7 @@ arguments
     delayType
 end
 
-%stepCount = 1e+6;
-stepCount = 1e+1;
+stepCount = 1e+6;
 
 baseParams = struct( ...
         ...% No rng controll

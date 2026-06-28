@@ -301,31 +301,39 @@ else
 end
 
 % Step delay
-if ~isfield(expParams,"stepDelay") || ~IsInteger(expParams.stepDelay) || expParams.stepDelay < 0 || ...
-        ~isequal(size(expParams.stepDelay),[1,1])
-    fprintf("Either no or wrong value for the step delay 'stepDelay'.\n")
-    stepDelay = 5;
-    fprintf("Setting step delay to %i.\n\n", stepDelay)
+if delayType ~= "None"
+    if ~isfield(expParams,"stepDelay") || ~IsInteger(expParams.stepDelay) || expParams.stepDelay < 0 || ...
+            ~isequal(size(expParams.stepDelay),[1,1])
+        fprintf("Either no or wrong value for the step delay 'stepDelay'.\n")
+        stepDelay = 5;
+        fprintf("Setting step delay to %i.\n\n", stepDelay)
+    else
+        stepDelay = expParams.stepDelay;
+        fprintf("stepDelay: %i.\n\n", stepDelay)
+    end
 else
-    stepDelay = expParams.stepDelay;
-    fprintf("stepDelay: %i.\n\n", stepDelay)
+    stepDelay = 0;
 end
 
 % Forcing no delay
-if stepDelay == 0
+if stepDelay == 0 && delayType ~= "None"
     fprintf("Zero step delay detected. Forcing delay type to be 'None'.\n\n")
     delayType = "None";
 end
 
 % Initial history of positions
-if ~isfield(expParams,"xInitHist") || ~isfloat(expParams.xInitHist) || ...
-        ~isequal(size(expParams.xInitHist),[N,d,stepDelay])
-    fprintf("Either no or wrong value for the matrix of initial history of positions 'xInitHist'.\n")
-    xHist = genInitHist(x,dt,stepDelay,boundConds,dims);  % default initial history
-    fprintf("Initializing experiment with 'blind motion' initial history.\n\n")
+if delayType ~= "None"
+    if ~isfield(expParams,"xInitHist") || ~isfloat(expParams.xInitHist) || ...
+            ~isequal(size(expParams.xInitHist),[N,d,stepDelay])
+        fprintf("Either no or wrong value for the matrix of initial history of positions 'xInitHist'.\n")
+        xHist = genInitHist(x,dt,stepDelay,boundConds,dims);  % default initial history
+        fprintf("Initializing experiment with 'blind motion' initial history.\n\n")
+    else
+        xHist = expParams.xInitHist;
+        fprintf("xInitHist accepted.\n\n")
+    end
 else
-    xHist = expParams.xInitHist;
-    fprintf("xInitHist accepted.\n\n")
+    xHist = genInitHist(x,dt,0,boundConds,dims); % Returns empty history
 end
 
 % Return initial history (for example if randomly generated)

@@ -4,6 +4,10 @@ function xInitHist = genInitHist(x,dt,stepDelay,boundConds,dims)
 
 xInitHist = zeros([N, d, stepDelay]);
 
+if stepDelay == 0
+    return
+end
+
 xInitHist(:,:,1) = x - sqrt(dt) * randn(N, d);    
 
 % Apply BCs
