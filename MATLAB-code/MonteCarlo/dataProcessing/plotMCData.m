@@ -1,52 +1,73 @@
-function [] = plotMCData(outlierCountsStat,clusterCountsStat,clusterSizesStat,clusterFreePercentage,plotData,N)
+function [] = plotMCData(outlierCountsStat, clusterCountsStat, clusterSizesStat, clusterFreePercentage, plotSettings)
 
 arguments
-    outlierCountsStat 
-    clusterCountsStat 
-    clusterSizesStat 
-    clusterFreePercentage 
-    plotData = struct()
-    N = 400
+    outlierCountsStat (1,1) struct
+    clusterCountsStat (1,1) struct
+    clusterSizesStat (1,1) struct
+    clusterFreePercentage (:,1)
+    plotSettings (1,1) struct = struct()
 end
 
 % This function visualizes statistical measures returned by processMCData.m.
+% TODOOOOOOOOOOOOOOOOOOOOOOOOOO
 % It can be specified, which of them will be plotted in the input struct
-% 'plotData' with fields (of logical values): 
-%   plotData.minimaMaxima
-%   plotData.histograms
-%   plotData.means
-%   plotData.medians
-%   plotData.variances
+% 'plotSettings' with fields (of logical values): 
+%   plotSettings.minimaMaxima
+%   plotSettings.histograms
+%   plotSettings.means
+%   plotSettings.medians
+%   plotSettings.variances
+% plotSettings.xLabel
+% plotSettings.xTickLabels
+% plotSettings.fontSize
 
-% Set default plotData values
-if ~isfield(plotData,'minimaMaxima')
-    plotData.minimaMaxima = true;
+% Set default plotSettings values
+if ~isfield(plotSettings, 'minimaMaxima')
+    plotSettings.minimaMaxima = true;
 else
-    validateattributes(plotData.minimaMaxima,{'logical'},{'scalar'})
+    validateattributes(plotSettings.minimaMaxima, {'logical'}, {'scalar'})
 end
 
-if ~isfield(plotData,'histograms')
-    plotData.histograms = true;
+if ~isfield(plotSettings, 'histograms')
+    plotSettings.histograms = true;
 else
-    validateattributes(plotData.histograms,{'logical'},{'scalar'})
+    validateattributes(plotSettings.histograms, {'logical'}, {'scalar'})
 end
 
-if ~isfield(plotData,'means')
-    plotData.means = true;
+if ~isfield(plotSettings, 'means')
+    plotSettings.means = true;
 else
-    validateattributes(plotData.means,{'logical'},{'scalar'})
+    validateattributes(plotSettings.means, {'logical'}, {'scalar'})
 end
 
-if ~isfield(plotData,'medians')
-    plotData.medians = true;
+if ~isfield(plotSettings, 'medians')
+    plotSettings.medians = true;
 else
-    validateattributes(plotData.medians,{'logical'},{'scalar'})
+    validateattributes(plotSettings.medians, {'logical'}, {'scalar'})
 end
 
-if ~isfield(plotData,'variances')
-    plotData.variances = true;
+if ~isfield(plotSettings, 'variances')
+    plotSettings.variances = true;
 else
-    validateattributes(plotData.variances,{'logical'},{'scalar'})
+    validateattributes(plotSettings.variances, {'logical'}, {'scalar'})
+end
+
+if ~isfield(plotSettings, "xLabel")
+    plotSettings.xLabel = "Delay \tau";
+else
+    validateattributes(plotSettings.xLabel, {'string'}, {'scalar'})
+end
+
+if ~isfield(plotSettings, "xTickLabels")
+    plotSettings.xTickLabels = 0:0.03:0.42;
+else
+    validateattributes(plotSettings.xTickLabels, {'string'}, {'vector'})
+end
+
+if ~isfield(plotSettings, "fontSize")
+    plotSettings.fontSize = getFontSize();
+else
+    validateattributes(plotSettings.fontSize, {'double'}, {'vector', 'positive'})
 end
 
 
@@ -57,36 +78,39 @@ MCCount = length(clusterFreePercentage);
 xPoints = (1:MCCount).';
 minMaxPlot.color = 'red';
 minMaxPlot.lineStyle = 'none';
-minMaxPlot.lineWidth = 2;
-meanPlot.color = minMaxPlot.color;
-meanPlot.lineStyle = '--';
-meanPlot.marker = 'diamond';
-meanPlot.lineWidth = 2;
+minMaxPlot.lineWidth = 3;
+meanPlot.color = 'red';
+meanPlot.lineStyle = '-.';
+meanPlot.lineWidth = 3;
 medianPlot.lineStyle = ':';
 medianPlot.color = 'magenta';
-medianPlot.lineWidth = 2;
-varPlot.color = 'yellow';
+medianPlot.lineWidth = 3;
+varPlot.color = 'black';
 varPlot.lineStyle = 'none';
 varPlot.marker = 'x';
+varPlot.markerSize = 7;
 varPlot.lineWidth = 2;
 histPlot.valOffset = 0.2;
 histPlot.color = [0.2,0.3,0.9];
-
+percMargin = 0.05;
 
 % Plot number of outliers
 subplot(2,2,1);
 hold on
 
 plotStatData(outlierCountsStat)
+setAxis(outlierCountsStat)
 
 hold off
-axis([1, MCCount+1, -1, N]);
 % Create ylabel
-ylabel({'number of outliers'});
+ylabel({'Number of outliers'});
 % Create xlabel
-xlabel({'stepDelay'});
+xlabel({plotSettings.xLabel});
+% Set xticks & xticklabels
+xticks(1:length(plotSettings.xTickLabels))
+xticklabels(plotSettings.xTickLabels)
 % Create title
-title({'min, avg and max number of outliers'});
+title({'Number of outliers'});
 
 
 % Plot number of clusters
@@ -94,15 +118,18 @@ subplot(2,2,2);
 hold on
 
 plotStatData(clusterCountsStat)
+setAxis(clusterCountsStat)
 
 hold off
-axis([1, MCCount+1, -1, 16]);
 % Create ylabel
 ylabel({'number of clusters'});
 % Create xlabel
-xlabel({'stepDelay'});
+xlabel({plotSettings.xLabel});
+% Set xticks & xticklabels
+xticks(1:length(plotSettings.xTickLabels))
+xticklabels(plotSettings.xTickLabels)
 % Create title
-title({'min, avg and max number of clusters'});
+title({'Number of clusters'});
 
 
 % Plot cluster sizes
@@ -110,31 +137,78 @@ subplot(2,2,3);
 hold on
 
 plotStatData(clusterSizesStat)
+setAxis(clusterSizesStat)
 
 hold off
-axis([1, MCCount+1, -1, N]);
 % Create ylabel
 ylabel({'cluster size'});
 % Create xlabel
-xlabel({'stepDelay'});
+xlabel({plotSettings.xLabel});
+% Set xticks & xticklabels
+xticks(1:length(plotSettings.xTickLabels))
+xticklabels(plotSettings.xTickLabels)
 % Create title
-title({'min, avg and max cluster size'});
+title({'Cluster sizes'});
 
 
 %plot percentage of cluster-free outcomes
 subplot(2,2,4);
 plot(xPoints, clusterFreePercentage, 'o');
-axis([1 MCCount -5 105]);
+axis([0 MCCount+1 -percMargin*100 100+percMargin*100]);
 % Create ylabel
 ylabel({'percentage'});
 % Create xlabel
-xlabel({'stepDelay'});
+xlabel(plotSettings.xLabel);
+% Set xticks & xticklabels
+xticks(1:length(plotSettings.xTickLabels))
+xticklabels(plotSettings.xTickLabels)
 % Create title
 title({'% of cluster-free outcomes'});
 
+% Font size
+fontsize(plotSettings.fontSize, "points");
+
+function [] = setAxis(data)
+
+    upper = 0;
+    lower = 0;
+
+    if plotSettings.minimaMaxima
+        upper = max(upper, max(data.maxima));
+        lower = min(lower, min(data.minima));
+    end
+
+    if plotSettings.histograms
+        upper = max(upper, max(data.maxima));
+        lower = min(lower, min(data.minima));
+    end
+
+    if plotSettings.means
+        upper = max(upper, max(data.means));
+        lower = min(lower, min(data.means));
+    end
+
+    if plotSettings.medians
+        upper = max(upper, max(data.medians));
+        lower = min(lower, min(data.medians));
+    end
+
+    if plotSettings.variances
+        upper = max(upper, max(data.means + sqrt(data.variances)));
+        lower = min(lower, min(data.means - sqrt(data.variances)));
+    end
+
+    diff = upper - lower;
+    upper = upper + percMargin * diff;
+    lower = lower - percMargin * diff;
+
+    axis([0, MCCount+1, lower, upper])
+
+end
+
 function [] = plotStatData(data)
 
-    if plotData.minimaMaxima
+    if plotSettings.minimaMaxima
         % Plot minima and maxima
         errorbar(xPoints, ...
             data.means, ...
@@ -143,7 +217,7 @@ function [] = plotStatData(data)
             'LineWidth',minMaxPlot.lineWidth,'LineStyle',minMaxPlot.lineStyle,'Color',minMaxPlot.color);
     end
 
-    if plotData.histograms
+    if plotSettings.histograms
         % Plot horizontal histograms
         for i = 1:length(data.histograms)
             histMax = max(data.histograms{i}) / (1 - histPlot.valOffset);
@@ -162,17 +236,17 @@ function [] = plotStatData(data)
         end
     end
 
-    if plotData.means
+    if plotSettings.means
         % Plot means connected with line
         plot(xPoints,data.means,meanPlot)
     end
 
-    if plotData.medians
+    if plotSettings.medians
         % Plot medians connected with lines
         plot(xPoints,data.medians,medianPlot)
     end
 
-    if plotData.variances
+    if plotSettings.variances
         % Plot variances around means
         plot(xPoints,[ ...
             data.means + sqrt(data.variances); ...

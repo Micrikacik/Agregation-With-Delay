@@ -32,7 +32,7 @@ for i_exp = 1:count
     results = load(file).results;
 
     if nMC > length(results)
-        fprintf("The desired value of the input 'nMC' is larger than the actual amount of simulations for experiment %i.", i_exp)
+        fprintf("The desired value of the input 'nMC' is larger than the actual amount of simulations for experiment %i.\n", i_exp)
     end 
 
     for i_sim = 1:min(nMC, length(results))

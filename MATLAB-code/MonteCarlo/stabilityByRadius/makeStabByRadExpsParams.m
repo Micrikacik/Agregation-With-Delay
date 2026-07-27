@@ -1,4 +1,4 @@
-function [expsParams, folderPathFuncHandle, filePostfixFuncHandle] = makeStabByRadExpsParams(d, intRads)
+function [expsParams, folderPathFuncHandle, filePostfixFuncHandle] = makeStabByRadExpsParams(N, d, intRads)
 
     stepCount = 1e+6;
     
@@ -6,7 +6,7 @@ function [expsParams, folderPathFuncHandle, filePostfixFuncHandle] = makeStabByR
             ...% No rng controll
             ...% No random generator settings controll
             ...% No initial position controll
-            "N", 400, ...% FIXED
+            "N", N, ...% FIXED
             "d", d, ...% FIXED
             ...% Variable intRad
             ...% Default boundConds
@@ -51,15 +51,15 @@ function [expsParams, folderPathFuncHandle, filePostfixFuncHandle] = makeStabByR
         expsParams(i).intRad = intRad;
     end
     
-    function path = folderPathFunc(d, intRad)
+    function path = folderPathFunc(N, d, intRad)
         path = "MonteCarlo/stabilityByRadius";
-        path = sprintf("%s/%iD/intRad0p%.0f", path, d, intRad * 100);
+        path = sprintf("%s/%iD/N%i/intRad0p%.0f", path, d, N, intRad * 100);
     end
     
-    function postfix = filePostfixFunc(d, intRad)
-        postfix = sprintf("%iD_0p%.0f", d, intRad * 100);
+    function postfix = filePostfixFunc(N, d, intRad)
+        postfix = sprintf("%iD_N%i_0p%.0f", d, N, intRad * 100);
     end
     
-    folderPathFuncHandle = @(params, i_exp) folderPathFunc(params.d, params.intRad);
-    filePostfixFuncHandle = @(params, i_exp) filePostfixFunc(params.d, params.intRad);
+    folderPathFuncHandle = @(params, i_exp) folderPathFunc(params.N, params.d, params.intRad);
+    filePostfixFuncHandle = @(params, i_exp) filePostfixFunc(params.N, params.d, params.intRad);
 end

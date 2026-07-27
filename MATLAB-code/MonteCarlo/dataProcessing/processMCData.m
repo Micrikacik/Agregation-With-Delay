@@ -1,7 +1,7 @@
-function [outlierCounts,outlierCountsStat, ...
-            clusterCounts,clusterCountsStat, ...
-            clusterSizes,clusterSizesStat, ...
-            clusterFreePercentage] = processMCData(xData, plotData, epsilon, minpts)
+function [outlierCounts, outlierCountsStat, ...
+            clusterCounts, clusterCountsStat, ...
+            clusterSizes, clusterSizesStat, ...
+            clusterFreePercentage] = processMCData(xData, plotData, volume, epsilon, minpts, distFunc)
 
 % Processes the data from Monte Carlo simulations, returning statistical 
 % measures and plotting their graphs (if user wants). Uses a metric 
@@ -30,15 +30,15 @@ function [outlierCounts,outlierCountsStat, ...
 arguments
     xData (:,:,:,:) double
     plotData (1,1) logical = true
-    epsilon (1,1) double {mustBePositive} = 0.05
-    minpts (1,1) double {mustBePositive} = 17
+    volume (1,1) double {mustBePositive} = 1;
+    epsilon (1,1) double {mustBePositive} = getIntRad(size(xData,2))
+    minpts (1,1) double {mustBePositive, mustBeInteger} = getMinClusterSize(size(xData,1), volume)
+    distFunc (1,1) function_handle = @(x) torusDistances(x)
 end
-
-minpts = round(minpts);
 
 wBar = waitbar(0,"Processing data...");
 
-%number of agents
+% Number of agents
 N = size(xData,1);
 
 % Dimension
@@ -64,10 +64,10 @@ for i_MC=1:MCCount
         x = xData(:,:,j_Sim,i_MC);
 
         % Calculate distances over the torus
-        dists = torusDistances(x);
+        dists = distFunc(x);
         
         % Identify clusters using the DBSCAN method with distances 'dists'
-        idx = dbscan(dists,epsilon,minpts,'Distance','precomputed');
+        idx = dbscan(dists, epsilon, minpts, 'Distance', 'precomputed');
 
         % Number of outliers
         outlierCounts(j_Sim,i_MC) = nnz(idx == -1);
@@ -132,6 +132,6 @@ end
 
 waitbar(1,wBar,"Plotting results...")
 
-plotMCData(outlierCountsStat,clusterCountsStat,clusterSizesStat,clusterFreePercentage,[],N)
+plotMCData(outlierCountsStat, clusterCountsStat, clusterSizesStat, clusterFreePercentage, struct())
 
 close(wBar)

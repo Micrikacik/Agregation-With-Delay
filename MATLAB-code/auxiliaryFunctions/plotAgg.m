@@ -36,13 +36,6 @@ switch d
         error('Invalid number of dimensions. Only 1, 2, or 3 are supported.');
 end
 
-kappa_1 = 2;  % "volume" of a unit 1-ball
-kappa = pi^(d/2) / gamma(d / 2 + 1);  % volume of a unit d-ball
-intRad_1 = 0.05^2 / 2 * pi;
-intRad = (kappa_1 / kappa * intRad_1)^(1/d);         % interaction radius
-epsilon = intRad;
-minpts = ceil(17 * (N / volume / 400));
-
 switch boundConds
     case "Periodic"
         %calculate distances over the torus
@@ -54,16 +47,18 @@ switch boundConds
         dist = distances(x);
 end
 
+epsilon = getIntRad(d);
+minpts = getMinClusterSize(N, volume);
         
 %identify clusters
-idx = dbscan(dist,epsilon,minpts,'Distance','precomputed');
+idx = dbscan(dist, epsilon, minpts, 'Distance', 'precomputed');
 
 switch d
     case 1
         gscatter(x(:,1),theta,idx);
         axis([0 dims(1) 0 1]);
     case 2
-        gscatter(x(:,1),x(:,2),idx);
+        gscatter(x(:,1),x(:,2),idx,[],".",getPointSize());
         axis([0 dims(1) 0 dims(2)]);
     case 3
         max_idx = max(idx);
@@ -80,6 +75,8 @@ switch d
         scatter3(x(:,1),x(:,2),x(:,3),[],colors,'filled');
         axis([0 dims(1) 0 dims(2) 0 dims(3)]);
 end
+
+fontsize(getFontSize(),'points')
 
     function result = idxMap(code,default,idx)
         result = zeros(length(idx),1);

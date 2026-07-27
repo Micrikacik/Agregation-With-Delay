@@ -229,22 +229,17 @@ end
 %----------------------------------MODEL------------------------------------
 
 % Interaction radius
-kappa = pi^(d/2) / gamma(d / 2 + 1);  % volume of a unit d-ball
 if ~isfield(expParams,"intRad") || ~isnumeric(expParams.intRad) || expParams.intRad < 0
     fprintf("Either no or wrong value for the interaction radius 'intRad'.\n")
-    % kappa_1 = 2;    % "volume" of a unit 1-ball
-    kappa_2 = pi;                                       % "volume" of a unit 2-ball
-    % intRad_1 = 0.05^2 / kappa_1 * kappa_2;              % interaction radius in 1D
-    intRad_2 = 0.05;                                    % interaction radius in 2D
-    % intRad = (kappa_1 / kappa * intRad_1)^(1/d);        % interaction radius - it will be 0.05 in 2D
-    intRad = (kappa_2 / kappa * intRad_2^2)^(1/d);      % interaction radius in d-dim space
+    intRad = getIntRad(d);
     fprintf("Setting intRad = %.3d\n\n", intRad)
 else
     intRad = expParams.intRad;
     fprintf("intRad = %.3d\n\n", intRad)
 end
-W_norm = kappa * intRad^d;      % W_norm to normalize W (done after the summation for efficiency)
-intRadSqrd = intRad*intRad;     % Squared raduius for faster calculations
+kappa = pi^(d/2) / gamma(d / 2 + 1);    % volume of a unit d-ball
+W_norm = kappa * intRad^d;              % W_norm to normalize W (done after the summation for efficiency)
+intRadSqrd = intRad*intRad;             % Squared raduius for faster calculations
 
 % Boundary conditions
 if ~isfield(expParams,"boundConds") || ~isstring(expParams.boundConds) || ...
@@ -313,6 +308,7 @@ if delayType ~= "None"
     end
 else
     stepDelay = 0;
+    fprintf("No step delay, since delay type in 'None'.\n\n")
 end
 
 % Forcing no delay
@@ -334,6 +330,7 @@ if delayType ~= "None"
     end
 else
     xHist = genInitHist(x,dt,0,boundConds,dims); % Returns empty history
+    fprintf("No initial history, since there is no delay.\n\n")
 end
 
 % Return initial history (for example if randomly generated)
@@ -504,13 +501,13 @@ else
 end
 
 % Setup to count occurances
-thetaOccur = zeros(N+1,N+1);    % 1 <= number of neighbours <= N
+thetaOccur = zeros(N+1,N+1);    % 0 <= number of neighbours <= N (N + 1 due to possible zero neighbours in Transmission type delay)
 
 % Count initial occurances (so the edge case stepCount = 0 works properly)
 if thetaOccurMod ~= -1
     intCountsRealTime = getIntCountsFromDSqrd(getDistsSqrd(x,x));
     intCountsDelayed = getIntCountsFromDSqrd(getDelayedDistsSqrd(x,xHist,histCoeff,delayType));
-    indexes = [intCountsRealTime(:),intCountsDelayed(:)] + 1; % Shift by one to include case where intCount is 0
+    indexes = [intCountsRealTime(:),intCountsDelayed(:)] + 1; % Shift by one to include case where intCount is 0 (this can happen in Transmission type delay)
     thetaOccur = accumarray(indexes, 1, size(thetaOccur));
 end
 

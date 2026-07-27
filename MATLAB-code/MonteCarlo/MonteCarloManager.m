@@ -96,7 +96,7 @@ for group = startGroup:endGroup
     % Run through all of the given experiment parameters
     for i_exp = 1:length(expsParams)
         params = expsParams(i_exp);
-        postfix = filePostfixFunc(params,i_exp) + "_" + MCGroupFilePostfix(group,groupCount);
+        postfix = filePostfixFunc(params, i_exp) + "_" + MCGroupFilePostfix(group, groupCount);
         params.expTitle = postfix;
         
         if useBaseSeed
@@ -108,7 +108,7 @@ for group = startGroup:endGroup
             [results, time] = MonteCarlo(params, poolsize);
         end
 
-        folderPath = folderPathFunc(params,i_exp);
+        folderPath = folderPathFunc(params, i_exp);
         filePath = MCFilePath(folderPath,fileName,postfix);
 
         if isfile(filePath) && (overwrite == false)

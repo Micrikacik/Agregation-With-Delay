@@ -29,9 +29,11 @@ tic
 parfor i = 1:nMC
     params = expParams;
     params.expTitle = params.expTitle + sprintf("_worker%i", i);
+
     if ~isempty(baseSeed)
-        params.rngSeed = baseSeed + i; % Set the random seed for the worker
+        params.rngSeed = baseSeed + i; % Set the seed for the worker
     end
+
     [xRec, thetaRec, thetaOccur, ~, ~, ~] = aggWithDelaySpeedup(params)
     results(i) = struct("xRec", xRec, "thetaRec", thetaRec, "thetaOccur", thetaOccur)
 end
