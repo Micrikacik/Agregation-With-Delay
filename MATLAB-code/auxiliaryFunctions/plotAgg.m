@@ -39,19 +39,19 @@ end
 switch boundConds
     case "Periodic"
         %calculate distances over the torus
-        dist = torusDistances(x,x,dims);
+        dists = torusDistances(x,x,dims);
     case "Reflective"
         %calculate distances
-        dist = distances(x);
+        dists = distances(x);
     otherwise
-        dist = distances(x);
+        dists = distances(x);
 end
 
 epsilon = getIntRad(d);
 minpts = getMinClusterSize(N, volume);
         
 %identify clusters
-idx = dbscan(dist, epsilon, minpts, 'Distance', 'precomputed');
+idx = dbscan(dists, epsilon, minpts, 'Distance', 'precomputed');
 
 switch d
     case 1

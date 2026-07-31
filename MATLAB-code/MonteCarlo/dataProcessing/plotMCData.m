@@ -1,10 +1,10 @@
-function [] = plotMCData(outlierCountsStat, clusterCountsStat, clusterSizesStat, clusterFreePercentage, plotSettings)
+function [] = plotMCData(outlierCountsStat, clusterCountsStat, clusterSizesStat, clusterFreePercentages, plotSettings)
 
 arguments
     outlierCountsStat (1,1) struct
     clusterCountsStat (1,1) struct
     clusterSizesStat (1,1) struct
-    clusterFreePercentage (:,1)
+    clusterFreePercentages (:,1)
     plotSettings (1,1) struct = struct()
 end
 
@@ -72,7 +72,7 @@ end
 
 
 figure
-MCCount = length(clusterFreePercentage);
+MCCount = length(clusterFreePercentages);
 
 % Settings of the graphs
 xPoints = (1:MCCount).';
@@ -80,18 +80,29 @@ minMaxPlot.color = 'red';
 minMaxPlot.lineStyle = 'none';
 minMaxPlot.lineWidth = 3;
 meanPlot.color = 'red';
-meanPlot.lineStyle = '-.';
-meanPlot.lineWidth = 3;
+meanPlot.lineStyle = ':';
+meanPlot.lineWidth = 2;
+meanPlot.marker = '^';
+meanPlot.markerSize = 8;
+meanPlot.markerFaceColor = meanPlot.color;
 medianPlot.lineStyle = ':';
-medianPlot.color = 'magenta';
-medianPlot.lineWidth = 3;
+medianPlot.color = 'blue';
+medianPlot.lineWidth = 2;
+medianPlot.marker = 'v';
+medianPlot.markerSize = 8;
+medianPlot.markerFaceColor = medianPlot.color;
 varPlot.color = 'black';
-varPlot.lineStyle = 'none';
+varPlot.lineStyle = 'none';%':';
 varPlot.marker = 'x';
-varPlot.markerSize = 7;
+varPlot.markerSize = 15;
 varPlot.lineWidth = 2;
 histPlot.valOffset = 0.2;
 histPlot.color = [0.2,0.3,0.9];
+clustFreePercPlot.lineStyle = ':';
+clustFreePercPlot.color = 'black';
+clustFreePercPlot.lineWidth = 2;
+clustFreePercPlot.marker = '.';
+clustFreePercPlot.markerSize = 30;
 percMargin = 0.05;
 
 % Plot number of outliers
@@ -104,11 +115,6 @@ setAxis(outlierCountsStat)
 hold off
 % Create ylabel
 ylabel({'Number of outliers'});
-% Create xlabel
-xlabel({plotSettings.xLabel});
-% Set xticks & xticklabels
-xticks(1:length(plotSettings.xTickLabels))
-xticklabels(plotSettings.xTickLabels)
 % Create title
 title({'Number of outliers'});
 
@@ -123,11 +129,6 @@ setAxis(clusterCountsStat)
 hold off
 % Create ylabel
 ylabel({'number of clusters'});
-% Create xlabel
-xlabel({plotSettings.xLabel});
-% Set xticks & xticklabels
-xticks(1:length(plotSettings.xTickLabels))
-xticklabels(plotSettings.xTickLabels)
 % Create title
 title({'Number of clusters'});
 
@@ -142,71 +143,97 @@ setAxis(clusterSizesStat)
 hold off
 % Create ylabel
 ylabel({'cluster size'});
-% Create xlabel
-xlabel({plotSettings.xLabel});
-% Set xticks & xticklabels
-xticks(1:length(plotSettings.xTickLabels))
-xticklabels(plotSettings.xTickLabels)
 % Create title
 title({'Cluster sizes'});
 
 
 %plot percentage of cluster-free outcomes
 subplot(2,2,4);
-plot(xPoints, clusterFreePercentage, 'o');
-axis([0 MCCount+1 -percMargin*100 100+percMargin*100]);
+
+plotStatData(clusterFreePercentages)
+setAxis(clusterFreePercentages)
+
 % Create ylabel
 ylabel({'percentage'});
-% Create xlabel
-xlabel(plotSettings.xLabel);
-% Set xticks & xticklabels
-xticks(1:length(plotSettings.xTickLabels))
-xticklabels(plotSettings.xTickLabels)
 % Create title
 title({'% of cluster-free outcomes'});
+
 
 % Font size
 fontsize(plotSettings.fontSize, "points");
 
+% Set light theme
+theme(gcf,"light")
+
 function [] = setAxis(data)
 
+    % First, get the upper and lower bounds for the displayed values
     upper = 0;
     lower = 0;
 
-    if plotSettings.minimaMaxima
-        upper = max(upper, max(data.maxima));
-        lower = min(lower, min(data.minima));
-    end
-
-    if plotSettings.histograms
-        upper = max(upper, max(data.maxima));
-        lower = min(lower, min(data.minima));
-    end
-
-    if plotSettings.means
-        upper = max(upper, max(data.means));
-        lower = min(lower, min(data.means));
-    end
-
-    if plotSettings.medians
-        upper = max(upper, max(data.medians));
-        lower = min(lower, min(data.medians));
-    end
-
-    if plotSettings.variances
-        upper = max(upper, max(data.means + sqrt(data.variances)));
-        lower = min(lower, min(data.means - sqrt(data.variances)));
+    isPercentages = isfloat(data);
+    
+    % Get it for percentages
+    if isPercentages  
+        upper = 100;
+        lower = 0;
+    % Get it for statistical measures
+    else
+        if plotSettings.minimaMaxima
+            upper = max(upper, max(data.maxima));
+            lower = min(lower, min(data.minima));
+        end
+    
+        if plotSettings.histograms
+            upper = max(upper, max(data.maxima));
+            lower = min(lower, min(data.minima));
+        end
+    
+        if plotSettings.means
+            upper = max(upper, max(data.means));
+            lower = min(lower, min(data.means));
+        end
+    
+        if plotSettings.medians
+            upper = max(upper, max(data.medians));
+            lower = min(lower, min(data.medians));
+        end
+    
+        if plotSettings.variances
+            upper = max(upper, max(data.means + sqrt(data.variances)));
+            lower = min(lower, min(data.means - sqrt(data.variances)));
+        end
     end
 
     diff = upper - lower;
     upper = upper + percMargin * diff;
     lower = lower - percMargin * diff;
 
+    % Set the axes
     axis([0, MCCount+1, lower, upper])
+
+    % Create xlabel
+    xlabel({plotSettings.xLabel});
+    % Set xticks & xticklabels
+    xticks(1:length(plotSettings.xTickLabels))
+    xticklabels(plotSettings.xTickLabels)
+
+    % Show grid
+    grid on
 
 end
 
 function [] = plotStatData(data)
+
+    isPercentages = isfloat(data);
+    
+    % Plot data as cluster free percentages
+    if isPercentages    
+        plot(xPoints, clusterFreePercentages, clustFreePercPlot);
+        return
+    end
+
+    % Otherwise - plot data as statistical measures
 
     if plotSettings.minimaMaxima
         % Plot minima and maxima
@@ -254,6 +281,7 @@ function [] = plotStatData(data)
             ].', ...
             varPlot)
     end
+
 end
 
 end
