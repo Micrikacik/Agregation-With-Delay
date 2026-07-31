@@ -16,10 +16,11 @@ end
 %   plotSettings.histograms
 %   plotSettings.means
 %   plotSettings.medians
-%   plotSettings.variances
+%   plotSettings.deviations
 % plotSettings.xLabel
 % plotSettings.xTickLabels
 % plotSettings.fontSize
+% plotSettings.separateFigs
 
 % Set default plotSettings values
 if ~isfield(plotSettings, 'minimaMaxima')
@@ -46,10 +47,10 @@ else
     validateattributes(plotSettings.medians, {'logical'}, {'scalar'})
 end
 
-if ~isfield(plotSettings, 'variances')
-    plotSettings.variances = true;
+if ~isfield(plotSettings, 'deviations')
+    plotSettings.deviations = true;
 else
-    validateattributes(plotSettings.variances, {'logical'}, {'scalar'})
+    validateattributes(plotSettings.deviations, {'logical'}, {'scalar'})
 end
 
 if ~isfield(plotSettings, "xLabel")
@@ -70,15 +71,19 @@ else
     validateattributes(plotSettings.fontSize, {'double'}, {'vector', 'positive'})
 end
 
+if ~isfield(plotSettings, "separateFigs")
+    plotSettings.separateFigs = false;
+else
+    validateattributes(plotSettings.separateFigs, {'logical'}, {'scalar'})
+end
 
-figure
 MCCount = length(clusterFreePercentages);
 
 % Settings of the graphs
 xPoints = (1:MCCount).';
-minMaxPlot.color = 'red';
+minMaxPlot.color = [0.85,0.6,0];
 minMaxPlot.lineStyle = 'none';
-minMaxPlot.lineWidth = 3;
+minMaxPlot.lineWidth = 2;
 meanPlot.color = 'red';
 meanPlot.lineStyle = ':';
 meanPlot.lineWidth = 2;
@@ -91,13 +96,13 @@ medianPlot.lineWidth = 2;
 medianPlot.marker = 'v';
 medianPlot.markerSize = 8;
 medianPlot.markerFaceColor = medianPlot.color;
-varPlot.color = 'black';
-varPlot.lineStyle = 'none';%':';
-varPlot.marker = 'x';
-varPlot.markerSize = 15;
-varPlot.lineWidth = 2;
-histPlot.valOffset = 0.2;
-histPlot.color = [0.2,0.3,0.9];
+devPlot.color = 'black';
+devPlot.lineStyle = 'none';
+devPlot.marker = 'x';
+devPlot.markerSize = 15;
+devPlot.lineWidth = 2;
+histPlot.valOffset = 0.1;
+histPlot.color = [0.3,0.8,0];
 clustFreePercPlot.lineStyle = ':';
 clustFreePercPlot.color = 'black';
 clustFreePercPlot.lineWidth = 2;
@@ -105,50 +110,81 @@ clustFreePercPlot.marker = '.';
 clustFreePercPlot.markerSize = 30;
 percMargin = 0.05;
 
+% Make new figure
+figure
+
 % Plot number of outliers
-subplot(2,2,1);
-hold on
+if plotSettings.separateFigs
+    % Figure already exists
+else
+    subplot(2,2,1);
+end
 
 plotStatData(outlierCountsStat)
 setAxis(outlierCountsStat)
 
-hold off
 % Create ylabel
 ylabel({'Number of outliers'});
 % Create title
 title({'Number of outliers'});
 
+if plotSettings.separateFigs
+    % Set theme and font size
+    theme(gcf,"light")
+    fontsize(plotSettings.fontSize, "points");
+end
+
 
 % Plot number of clusters
-subplot(2,2,2);
-hold on
+if plotSettings.separateFigs
+    figure
+else
+    subplot(2,2,2);
+end
 
 plotStatData(clusterCountsStat)
 setAxis(clusterCountsStat)
 
-hold off
 % Create ylabel
 ylabel({'number of clusters'});
 % Create title
 title({'Number of clusters'});
 
+if plotSettings.separateFigs
+    % Set theme and font size
+    theme(gcf,"light")
+    fontsize(plotSettings.fontSize, "points");
+end
+
 
 % Plot cluster sizes
-subplot(2,2,3);
-hold on
+if plotSettings.separateFigs
+    figure
+else
+    subplot(2,2,3);
+end
 
 plotStatData(clusterSizesStat)
 setAxis(clusterSizesStat)
 
-hold off
 % Create ylabel
 ylabel({'cluster size'});
 % Create title
 title({'Cluster sizes'});
 
+if plotSettings.separateFigs
+    % Set theme and font size
+    theme(gcf,"light")
+    fontsize(plotSettings.fontSize, "points");
+end
+
 
 %plot percentage of cluster-free outcomes
-subplot(2,2,4);
+if plotSettings.separateFigs
+    figure
+else
+    subplot(2,2,4);
+end
 
 plotStatData(clusterFreePercentages)
 setAxis(clusterFreePercentages)
@@ -199,7 +235,7 @@ function [] = setAxis(data)
             lower = min(lower, min(data.medians));
         end
     
-        if plotSettings.variances
+        if plotSettings.deviations
             upper = max(upper, max(data.means + sqrt(data.variances)));
             lower = min(lower, min(data.means - sqrt(data.variances)));
         end
@@ -234,6 +270,7 @@ function [] = plotStatData(data)
     end
 
     % Otherwise - plot data as statistical measures
+    hold on
 
     if plotSettings.minimaMaxima
         % Plot minima and maxima
@@ -252,10 +289,11 @@ function [] = plotStatData(data)
                 if data.histograms{i}(j) == 0
                     continue
                 end
+                w = data.histograms{i}(j) / histMax;
                 rectangle('Position',[ ...
-                    i, ...
+                    i - w/2, ...
                     data.minima(i) + j - 1.5, ...
-                    data.histograms{i}(j) / histMax, ...
+                    w, ...
                     1, ...
                     ], ...
                     'FaceColor',histPlot.color,'EdgeColor',histPlot.color)
@@ -273,14 +311,16 @@ function [] = plotStatData(data)
         plot(xPoints,data.medians,medianPlot)
     end
 
-    if plotSettings.variances
-        % Plot variances around means
+    if plotSettings.deviations
+        % Plot deviations around means
         plot(xPoints,[ ...
             data.means + sqrt(data.variances); ...
             data.means - sqrt(data.variances) ...
             ].', ...
-            varPlot)
+            devPlot)
     end
+
+    hold off
 
 end
 
