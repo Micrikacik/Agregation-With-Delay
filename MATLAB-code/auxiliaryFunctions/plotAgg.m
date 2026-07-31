@@ -27,11 +27,6 @@ switch d
     case 3
         %epsilon = 1.8/20;
         %minpts = 9;
-
-        satDef = 0;
-        valDef = 0.3;
-        satSwap = 0.5;
-        valSwap = 0.5;
     otherwise
         error('Invalid number of dimensions. Only 1, 2, or 3 are supported.');
 end
@@ -53,44 +48,52 @@ minpts = getMinClusterSize(N, volume);
 %identify clusters
 idx = dbscan(dists, epsilon, minpts, 'Distance', 'precomputed');
 
+max_idx = max(idx);
+out_idx = idx <= 0;
+clus_idx = idx > 0;
+
+maxDistColors = maxdistcolor(max_idx + 1);
+colors = idxMap(maxDistColors(1:end-1,:), maxDistColors(end,:), idx);
+
+figure
+
 switch d
     case 1
-        gscatter(x(:,1),theta,idx);
+        hold on
+        scatter(x(clus_idx,1), theta(clus_idx), getPointSize()^2, colors(clus_idx,:), ".")
+        scatter(x(out_idx,1), theta(out_idx), getPointSize()^2, colors(out_idx,:), "x", 'LineWidth', 3)
+        hold off
         axis([0 dims(1) 0 1]);
     case 2
-        gscatter(x(:,1),x(:,2),idx,[],".",getPointSize());
+        hold on
+        scatter(x(clus_idx,1), x(clus_idx,2), getPointSize()^2, colors(clus_idx,:), ".")
+        scatter(x(out_idx,1), x(out_idx,2), getPointSize()^2, colors(out_idx,:), "x", 'LineWidth', 3)
+        hold off
         axis([0 dims(1) 0 dims(2)]);
     case 3
-        max_idx = max(idx);
-        hues = (idx + 1) ./ (max_idx + 1);
-        satsCode = repmat([satSwap;1],[round(max_idx/2),1]);
-        valsCode = repmat([1;valSwap],[round(max_idx/2),1]);
-        if mod(max_idx,2) == 1
-            satsCode = [satsCode;satSwap];
-            valsCode = [valsCode;1];
-        end
-        sats = idxMap(satsCode,satDef,idx);
-        vals = idxMap(valsCode,valDef,idx);
-        colors = hsv2rgb([hues, sats, vals]);
-        scatter3(x(:,1),x(:,2),x(:,3),[],colors,'filled');
+        hold on
+        scatter3(x(clus_idx,1), x(clus_idx,2), x(clus_idx,3), getPointSize()^2, colors(clus_idx,:), ".")
+        scatter3(x(out_idx,1), x(out_idx,2), x(out_idx,3), getPointSize()^2, colors(out_idx,:), "x", 'LineWidth', 3)
+        hold off
         axis([0 dims(1) 0 dims(2) 0 dims(3)]);
 end
 
 fontsize(getFontSize(),'points')
+theme(gcf, 'light')
 
     function result = idxMap(code,default,idx)
-        result = zeros(length(idx),1);
+        result = zeros(length(idx), size(code, 2));
         for i = 1:length(idx)
             setDefault = true;
-            for c = 1:length(code)
+            for c = 1:size(code, 1)
                 if idx(i) == c
-                    result(i) = code(c);
+                    result(i,:) = code(c,:);
                     setDefault = false;
                     continue
                 end
             end
             if setDefault
-                result(i) = default;
+                result(i,:) = default;
             end
         end
     end

@@ -457,6 +457,15 @@ if isfield(expParams,"recordVideoPath") && isstring(expParams.recordVideoPath)
     open(vidWrit)
 end
 
+% Make new figure if simulation is plotted and plot initial positions
+if stepPlotMod > 0
+    figure
+    hold off
+    DSqrd = getDistsSqrd(x,x);
+    theta = getTheta(DSqrd);
+    plotSimStep(theta)
+end
+
 % Set output variables
 
 % Auxiliary function to determine the count of to be recorded steps
@@ -635,15 +644,15 @@ function plotSimStep(theta)
     f = [];
     switch d
         case 1
-            scatter(x(:,1),theta./volume,[],scatterColors);
+            scatter(x(:,1), theta * W_norm / volume, getPointSize()^2, scatterColors, '.');
             axis([0 dims(1) 0 1]);
             f = getframe;
         case 2
-            scatter(x(:,1),x(:,2),[],scatterColors); 
+            scatter(x(:,1), x(:,2), getPointSize()^2, scatterColors, '.'); 
             axis([0 dims(1) 0 dims(2)]);
             f = getframe;
         case 3
-            scatter3(x(:,1),x(:,2),x(:,3),[],scatterColors);
+            scatter3(x(:,1), x(:,2), x(:,3), getPointSize()^2, scatterColors, '.');
             axis([0 dims(1) 0 dims(2) 0 dims(3)]);
             f = getframe;
     end
@@ -742,7 +751,7 @@ if stepPlotMod ~= -2
 
     fprintf("----------------------------------\n\n")
     fprintf("Plotting agregation groups.\n\n")
-    plotAgg(x,theta./volume,dims,boundConds)
+    plotAgg(x, theta * W_norm / volume, dims, boundConds)
 end
 
 end
