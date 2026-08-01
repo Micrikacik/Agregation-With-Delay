@@ -45,7 +45,7 @@ for i_exp = 1:count
         new_group_params = rmfield(new_group_params, "expTitle");
         if ~isempty(group_params) && ~isequal(group_params, new_group_params)
             fprintf("There are different experiment parameters between groups!\n")
-            compareStructs(new_group_params, group_params, "group_" + group + "_i_exp_" + i_exp, "group_" + group-1 + "_i_exp_" + i_exp)
+            compareStructs(new_group_params, group_params, "group_" + group + "_i_exp_" + i_exp, "group_" + (group-1) + "_i_exp_" + i_exp)
         end
 
         % Check if parameters of the group are the same as the ones from
