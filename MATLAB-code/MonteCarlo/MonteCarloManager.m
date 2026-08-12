@@ -1,4 +1,4 @@
-function [] = MonteCarloManager(expsParams, nMC, folderPathFunc, filePostfixFunc, startGroup, endGroup, overwrite, useBaseSeed, fileName)
+function [] = MonteCarloManager(expsParams, folderPathFunc, filePostfixFunc, nMC, useBaseSeed, startGroup, endGroup, overwrite, fileName)
 
 % expsParams (structure array) - contains parameters to the experiments
 % nMC (positive integer) - number of Monte Carlo simulations
@@ -11,13 +11,13 @@ function [] = MonteCarloManager(expsParams, nMC, folderPathFunc, filePostfixFunc
 
 arguments
     expsParams (:,1) struct
-    nMC (1,1) double {mustBeInteger, mustBePositive}
     folderPathFunc function_handle
     filePostfixFunc function_handle
+    nMC (1,1) double {mustBeInteger, mustBePositive}
+    useBaseSeed (1,1) logical = false
     startGroup double {mustBeInteger, mustBePositive} = []
     endGroup double {mustBeInteger, mustBePositive} = []
     overwrite (1,1) logical = false
-    useBaseSeed (1,1) logical = false
     fileName (1,1) string = "MCData"
 end
 

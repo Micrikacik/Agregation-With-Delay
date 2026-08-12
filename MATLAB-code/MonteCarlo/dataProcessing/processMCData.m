@@ -1,7 +1,7 @@
 function [outlierCounts, outlierCountsStat, ...
             clusterCounts, clusterCountsStat, ...
             clusterSizes, clusterSizesStat, ...
-            clusterFreePercentage] = processMCData(xData, plotData, volume, epsilon, minpts, distFunc)
+            clusterFreePercentages] = processMCData(xData, plotData, volume, epsilon, minpts, distFunc)
 
 % Processes the data from Monte Carlo simulations, returning statistical 
 % measures and plotting their graphs (if user wants). Uses a metric 
@@ -32,7 +32,7 @@ arguments
     plotData (1,1) logical = true
     volume (1,1) double {mustBePositive} = 1;
     epsilon (1,1) double {mustBePositive} = getIntRad(size(xData,2))
-    minpts (1,1) double {mustBePositive, mustBeInteger} = getMinClusterSize(size(xData,1), volume)
+    minpts (1,1) double {mustBePositive, mustBeInteger} = getMinClusterSize(size(xData, 1), size(xData, 2), volume)
     distFunc (1,1) function_handle = @(x) torusDistances(x)
 end
 
@@ -54,7 +54,7 @@ MCCount = size(xData,4);
 outlierCounts = zeros(MCSize,MCCount);
 clusterCounts = zeros(MCSize,MCCount);
 clusterSizes = cell(1,MCCount);
-clusterFreePercentage = zeros(MCCount,1);
+clusterFreePercentages = zeros(MCCount,1);
 
 % Go through all Monte Carlo simulations
 for i_MC=1:MCCount    
@@ -82,7 +82,7 @@ for i_MC=1:MCCount
     end
 
     % Percentage of cluster-free outcomes
-    clusterFreePercentage(i_MC) = 100 * nnz(clusterCounts(:,i_MC) == 0) / MCSize;
+    clusterFreePercentages(i_MC) = 100 * nnz(clusterCounts(:,i_MC) == 0) / MCSize;
 
     waitbar(i_MC / MCCount,wBar,"Processing data...")
 end
@@ -132,6 +132,6 @@ end
 
 waitbar(1,wBar,"Plotting results...")
 
-plotMCData(outlierCountsStat, clusterCountsStat, clusterSizesStat, clusterFreePercentage, struct())
+plotMCData(outlierCountsStat, clusterCountsStat, clusterSizesStat, clusterFreePercentages, struct())
 
 close(wBar)

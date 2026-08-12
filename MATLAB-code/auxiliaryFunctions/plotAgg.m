@@ -43,16 +43,16 @@ switch boundConds
 end
 
 epsilon = getIntRad(d);
-minpts = getMinClusterSize(N, volume);
+minpts = getMinClusterSize(N, d, volume);
         
 %identify clusters
 idx = dbscan(dists, epsilon, minpts, 'Distance', 'precomputed');
 
-max_idx = max(idx);
+max_idx_or_0 = max(max(idx), 0);
 out_idx = idx <= 0;
 clus_idx = idx > 0;
 
-maxDistColors = maxdistcolor(max_idx + 1);
+maxDistColors = maxdistcolor(max_idx_or_0 + 1);
 colors = idxMap(maxDistColors(1:end-1,:), maxDistColors(end,:), idx);
 
 figure

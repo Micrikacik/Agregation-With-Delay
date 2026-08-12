@@ -712,7 +712,7 @@ end
 % Calculates the number of agents in the interaction radius of any i-th
 % agent (returns a vector of these numbers)
 function intCounts = getIntCountsFromDSqrd(DSqrd)
-    intCounts = sum((DSqrd < intRadSqrd),2);
+    intCounts = sum((DSqrd < intRadSqrd), 2);
 end
 
 % Close video writer

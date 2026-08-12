@@ -20,7 +20,7 @@ end
 % plotSettings.xLabel
 % plotSettings.xTickLabels
 % plotSettings.fontSize
-% plotSettings.separateFigs
+% plotSettings.separateFigures
 
 % Set default plotSettings values
 if ~isfield(plotSettings, 'minimaMaxima')
@@ -71,17 +71,17 @@ else
     validateattributes(plotSettings.fontSize, {'double'}, {'vector', 'positive'})
 end
 
-if ~isfield(plotSettings, "separateFigs")
-    plotSettings.separateFigs = false;
+if ~isfield(plotSettings, "separateFigures")
+    plotSettings.separateFigures = false;
 else
-    validateattributes(plotSettings.separateFigs, {'logical'}, {'scalar'})
+    validateattributes(plotSettings.separateFigures, {'logical'}, {'scalar'})
 end
 
 MCCount = length(clusterFreePercentages);
 
 % Settings of the graphs
 xPoints = (1:MCCount).';
-minMaxPlot.color = [0.85,0.6,0];
+minMaxPlot.color = [0.85,0.55,0.25];
 minMaxPlot.lineStyle = 'none';
 minMaxPlot.lineWidth = 2;
 meanPlot.color = 'red';
@@ -102,7 +102,8 @@ devPlot.marker = 'x';
 devPlot.markerSize = 15;
 devPlot.lineWidth = 2;
 histPlot.valOffset = 0.1;
-histPlot.color = [0.3,0.8,0];
+histPlot.color1 = [0.35,0.85,0.1];%[0.4,0.85,0];
+histPlot.color2 = [0.35,0.85,0.1];%[0.4,0.85,0];%[0,0.75,0.4];
 clustFreePercPlot.lineStyle = ':';
 clustFreePercPlot.color = 'black';
 clustFreePercPlot.lineWidth = 2;
@@ -114,7 +115,7 @@ percMargin = 0.05;
 figure
 
 % Plot number of outliers
-if plotSettings.separateFigs
+if plotSettings.separateFigures
     % Figure already exists
 else
     subplot(2,2,1);
@@ -128,7 +129,7 @@ ylabel({'Number of outliers'});
 % Create title
 title({'Number of outliers'});
 
-if plotSettings.separateFigs
+if plotSettings.separateFigures
     % Set theme and font size
     theme(gcf,"light")
     fontsize(plotSettings.fontSize, "points");
@@ -136,7 +137,7 @@ end
 
 
 % Plot number of clusters
-if plotSettings.separateFigs
+if plotSettings.separateFigures
     figure
 else
     subplot(2,2,2);
@@ -146,11 +147,11 @@ plotStatData(clusterCountsStat)
 setAxis(clusterCountsStat)
 
 % Create ylabel
-ylabel({'number of clusters'});
+ylabel({'Number of clusters'});
 % Create title
 title({'Number of clusters'});
 
-if plotSettings.separateFigs
+if plotSettings.separateFigures
     % Set theme and font size
     theme(gcf,"light")
     fontsize(plotSettings.fontSize, "points");
@@ -158,7 +159,7 @@ end
 
 
 % Plot cluster sizes
-if plotSettings.separateFigs
+if plotSettings.separateFigures
     figure
 else
     subplot(2,2,3);
@@ -168,11 +169,11 @@ plotStatData(clusterSizesStat)
 setAxis(clusterSizesStat)
 
 % Create ylabel
-ylabel({'cluster size'});
+ylabel({'Cluster size'});
 % Create title
 title({'Cluster sizes'});
 
-if plotSettings.separateFigs
+if plotSettings.separateFigures
     % Set theme and font size
     theme(gcf,"light")
     fontsize(plotSettings.fontSize, "points");
@@ -180,7 +181,7 @@ end
 
 
 %plot percentage of cluster-free outcomes
-if plotSettings.separateFigs
+if plotSettings.separateFigures
     figure
 else
     subplot(2,2,4);
@@ -190,7 +191,7 @@ plotStatData(clusterFreePercentages)
 setAxis(clusterFreePercentages)
 
 % Create ylabel
-ylabel({'percentage'});
+ylabel({'Percentage'});
 % Create title
 title({'% of cluster-free outcomes'});
 
@@ -199,7 +200,7 @@ title({'% of cluster-free outcomes'});
 fontsize(plotSettings.fontSize, "points");
 
 % Set light theme
-theme(gcf,"light")
+theme(gcf, "light")
 
 function [] = setAxis(data)
 
@@ -285,18 +286,28 @@ function [] = plotStatData(data)
         % Plot horizontal histograms
         for i = 1:length(data.histograms)
             histMax = max(data.histograms{i}) / (1 - histPlot.valOffset);
+            colorCounter = 0;
             for j = 1:length(data.histograms{i})
+
                 if data.histograms{i}(j) == 0
                     continue
                 end
+
+                if mod(colorCounter, 2) == 0
+                    color = histPlot.color1;
+                else
+                    color = histPlot.color2;
+                end
+                colorCounter = colorCounter + 1;
+
                 w = data.histograms{i}(j) / histMax;
                 rectangle('Position',[ ...
-                    i - w/2, ...
+                    i + histPlot.valOffset / 2, ...
                     data.minima(i) + j - 1.5, ...
                     w, ...
                     1, ...
                     ], ...
-                    'FaceColor',histPlot.color,'EdgeColor',histPlot.color)
+                    'FaceColor', color, 'EdgeColor', color, 'LineStyle', 'none')
             end
         end
     end
