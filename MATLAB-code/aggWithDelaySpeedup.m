@@ -43,7 +43,7 @@ function [xRec, thetaRec, thetaOccur, xInitHist, xHist, rngSetts] = aggWithDelay
 %       dt (positive float) - time step length.
 %       stepCount (positive integer) - number of time steps.
 %       T (positive float) - total time of the simulation, alternative to 
-%           'stepCount', which will be 'stepCount = T / dt', if not provided.
+%           'stepCount', which will be 'stepCount = round(T / dt)', if not provided.
 %       delayType (string) - type of the delay.
 %           Must be one of the following strings:
 %               "Reaction"
@@ -51,6 +51,8 @@ function [xRec, thetaRec, thetaOccur, xInitHist, xHist, rngSetts] = aggWithDelay
 %               "Inner"
 %               "None"
 %       stepDelay (nonnegative integer) - number of steps used to delay the simulation.
+%       tau (nonnegative float) - delay in the simulation, alternative to 
+%           'stepDelay', which will be 'stepDelay = round(tau / dt)', if not provided.
 %       xInitHist (float matrix) - initial history of the matrix of positions used in
 %           calculation of the first few iterations.
 %           x(:,:,i) - position matrix i steps into the past, 
@@ -90,7 +92,7 @@ function [xRec, thetaRec, thetaOccur, xInitHist, xHist, rngSetts] = aggWithDelay
 %           occurances of an agents with specific numbers of actual neighbours 
 %           and delayed neighbours in the t-th step, if the reminder of t 
 %           divided by 'thetaOccurMod' is zero.
-%           The first step is always counted.
+%           The first step is always counted (if thetaOccurMod >= 1).
 %           The last step is counted only if mod(stepCount,thetaOccurMod) == 0.
 %           If thetaOccurMod = -1, then no in-between steps are counted.
 %           If no value is specified, then the value of 'thetaRecMod' is
@@ -269,19 +271,19 @@ end
 if ~isfield(expParams,"stepCount") || ~IsInteger(expParams.stepCount) || expParams.stepCount < 0 || ...
         ~isequal(size(expParams.stepCount),[1,1])
     fprintf("Either no or wrong value for the number of time steps 'stepCount'.\n")
-    if ~isfield(expParams,"T") || ~isfloat(expParams.T) || expParams.T < 0 || ...
-        ~isequal(size(expParams.T),[1,1])
+    if ~isfield(expParams,"T") || ~isfloat(expParams.T) || expParams.T <= 0 || ...
+        ~isequal(size(expParams.T), [1,1])
         fprintf("Either no or wrong value for the total simulation time 'T'.\n")
         stepCount = 1000;                    % default number of time steps
-        fprintf("Setting stepCount = %i.\n\n", stepCount)
+        fprintf("Setting stepCount = %i (T = %.3d).\n\n", stepCount, stepCount * dt)
     else
-        T = expParams.T;
-        stepCount = T / dt;
-        fprintf("T = %i & stepCount = %i.\n\n", T, stepCount)
+        stepCount = round(expParams.T / dt);
+        T = stepCount * dt;
+        fprintf("T = %.3d (stepCount = %i).\n\n", T, stepCount)
     end
 else
     stepCount = expParams.stepCount;
-    fprintf("stepCount = %i.\n\n", stepCount)
+    fprintf("stepCount = %i (T = %.3d).\n\n", stepCount, stepCount * dt)
 end
 
 % Delay type
@@ -300,15 +302,23 @@ if delayType ~= "None"
     if ~isfield(expParams,"stepDelay") || ~IsInteger(expParams.stepDelay) || expParams.stepDelay < 0 || ...
             ~isequal(size(expParams.stepDelay),[1,1])
         fprintf("Either no or wrong value for the step delay 'stepDelay'.\n")
-        stepDelay = 5;
-        fprintf("Setting step delay to %i.\n\n", stepDelay)
+        if ~isfield(expParams,"tau") || ~isfloat(expParams.tau) || expParams.tau < 0 || ...
+            ~isequal(size(expParams.tau),[1,1])
+            fprintf("Either no or wrong value for the delay 'tau'.\n")
+            stepDelay = 5;                    % default number of time steps
+            fprintf("Setting stepDelay = %i (tau = %.3d).\n\n", stepDelay, stepDelay * dt)
+        else
+            stepDelay = round(expParams.tau / dt);
+            tau = stepDelay * dt;
+            fprintf("tau = %.3d (stepDelay = %i).\n\n", tau, stepDelay)
+        end
     else
         stepDelay = expParams.stepDelay;
-        fprintf("stepDelay: %i.\n\n", stepDelay)
+        fprintf("stepDelay: %i (tau = %.3d).\n\n", stepDelay, stepDelay * dt)
     end
 else
     stepDelay = 0;
-    fprintf("No step delay, since delay type in 'None'.\n\n")
+    fprintf("No step delay (tau = 0), since delay type in 'None'.\n\n")
 end
 
 % Forcing no delay

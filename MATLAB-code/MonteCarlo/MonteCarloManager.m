@@ -59,17 +59,17 @@ end
 
 fprintf("Experiment parameters (values will be displayed when simulations start):\n")
 disp(expsParams)
-fprintf("Number of Monte Carlo simulations: %i\n\n", nMC)
 fprintf("Folder path function:\n")
 disp(folderPathFunc)
 fprintf("File postfix function:\n")
 disp(filePostfixFunc)
+fprintf("Number of Monte Carlo simulations: %i\n\n", nMC)
+fprintf("Use base seed: %i\n\n", useBaseSeed)
 fprintf("Group count: %i\n\n", groupCount)
 fprintf("Pool size: %i\n\n", poolsize)
 fprintf("Start group: %i\n\n", startGroup)
 fprintf("End group: %i\n\n", endGroup)
 fprintf("Overwrite: %i\n\n", overwrite)
-fprintf("Use base seed: %i\n\n", useBaseSeed)
 fprintf("File name: %s\n\n", fileName)
 
 % Save info files with poolsize and groupcount for later processing
