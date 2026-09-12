@@ -1,4 +1,4 @@
-function [] = MonteCarloManager(expsParams, folderPathFunc, filePostfixFunc, nMC, useBaseSeed, startGroup, endGroup, overwrite, fileName)
+function [] = MonteCarloManager(expsParams, folderPathFunc, filePostfixFunc, startGroup, endGroup, nMC, useBaseSeed, overwrite, fileName)
 
 % expsParams (structure array) - contains parameters to the experiments
 % nMC (positive integer) - number of Monte Carlo simulations
@@ -13,10 +13,10 @@ arguments
     expsParams (:,1) struct
     folderPathFunc function_handle
     filePostfixFunc function_handle
-    nMC (1,1) double {mustBeInteger, mustBePositive}
-    useBaseSeed (1,1) logical = false
     startGroup double {mustBeInteger, mustBePositive} = []
     endGroup double {mustBeInteger, mustBePositive} = []
+    nMC (1,1) double {mustBeInteger, mustBePositive} = 100
+    useBaseSeed (1,1) logical = true
     overwrite (1,1) logical = false
     fileName (1,1) string = "MCData"
 end
@@ -63,12 +63,12 @@ fprintf("Folder path function:\n")
 disp(folderPathFunc)
 fprintf("File postfix function:\n")
 disp(filePostfixFunc)
-fprintf("Number of Monte Carlo simulations: %i\n\n", nMC)
-fprintf("Use base seed: %i\n\n", useBaseSeed)
 fprintf("Group count: %i\n\n", groupCount)
 fprintf("Pool size: %i\n\n", poolsize)
 fprintf("Start group: %i\n\n", startGroup)
 fprintf("End group: %i\n\n", endGroup)
+fprintf("Number of Monte Carlo simulations: %i\n\n", nMC)
+fprintf("Use base seed: %i\n\n", useBaseSeed)
 fprintf("Overwrite: %i\n\n", overwrite)
 fprintf("File name: %s\n\n", fileName)
 
