@@ -34,7 +34,7 @@ parfor i = 1:nMC
         params.rngSeed = baseSeed + i; % Set the seed for the worker
     end
 
-    [xRec, thetaRec, thetaOccur, ~, ~, ~] = aggWithDelaySpeedup(params)
+    [xRec, thetaRec, thetaOccur] = aggWithDelaySpeedup(params)
     results(i) = struct("xRec", xRec, "thetaRec", thetaRec, "thetaOccur", thetaOccur)
 end
 time = toc;

@@ -1,4 +1,4 @@
-function [xRec, thetaRec, thetaOccur, xInitHist, xHist, rngSetts] = aggWithDelaySpeedup(expParams)
+function [xRec, thetaRec, thetaOccur, xHist, rngSetts] = aggWithDelaySpeedup(expParams)
 
 % Runs the discrete simulation of agregation with a constant delay.
 %
@@ -343,9 +343,6 @@ else
     fprintf("No initial history, since there is no delay.\n\n")
 end
 
-% Return initial history (for example if randomly generated)
-xInitHist = xHist;
-
 %----------------------------------USER-------------------------------------
 
 % Step plot mod
@@ -543,7 +540,7 @@ if memorizable
 end
 
 % Simulate for t=1:stepCount, this loop calculates the  step t from the step t-1
-for t=1:stepCount
+for t = 1:stepCount
     % Interaction counts:
     % Vector, where i-th element is the count of agents 
     % in the interaction radius of the i-th agent (including the i-th)
@@ -631,7 +628,7 @@ for t=1:stepCount
             x = abs(x);
             x = dims - abs(dims - x);
         otherwise
-            error('Invalid delay type.');
+            error("Undefined boundary conditions: '%.i'", boundConds);
     end
 
     % Plot - to make correct 1D plot, we need current theta
@@ -724,6 +721,9 @@ end
 function intCounts = getIntCountsFromDSqrd(DSqrd)
     intCounts = sum((DSqrd < intRadSqrd), 2);
 end
+
+
+% Finish
 
 % Close video writer
 if recordVideo
