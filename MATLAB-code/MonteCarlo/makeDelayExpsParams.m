@@ -63,8 +63,8 @@ for i = 1:length(stepDelays)
     expsParams(i).stepDelay = stepDelay;
 end
 
-folderPathFunc = @(params,i_exp) MCFolderPath(params.delayType, params.d, params.stepDelay);
-filePostfixFunc = @(params,i_exp) MCFilePostfix(params.delayType, params.d, params.stepDelay);
+folderPathFunc = @(params,i_exp) MCFolderPath(params(i_exp).delayType, params(i_exp).d, params(i_exp).stepDelay);
+filePostfixFunc = @(params,i_exp) MCFilePostfix(params(i_exp).delayType, params(i_exp).d, params(i_exp).stepDelay);
 
 
 % rng('default')

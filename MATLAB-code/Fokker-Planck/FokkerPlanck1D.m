@@ -385,8 +385,6 @@ tol = 100 * eps(L);
 % Normalization multiplier
 multip = 1 / (1 + 2 * floor(((intRad - tol) - dx) / 2 / dx));
 
-sum(rho)
-
 % Pre-calculate the distances over the periodic/reflected domain
 switch boundConds 
 

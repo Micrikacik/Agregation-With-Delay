@@ -1,4 +1,4 @@
-function [] = MonteCarloManager(expsParams, folderPathFunc, filePostfixFunc, startGroup, endGroup, nMC, useBaseSeed, overwrite, fileName)
+function [] = MonteCarloManager(expsParams, folderPathFunc, filePostfixFunc, startGroup, endGroup, nMC, groupSeed, overwrite, fileName)
 
 % expsParams (structure array) - contains parameters to the experiments
 % nMC (positive integer) - number of Monte Carlo simulations
@@ -16,7 +16,7 @@ arguments
     startGroup double {mustBeInteger, mustBePositive} = []
     endGroup double {mustBeInteger, mustBePositive} = []
     nMC (1,1) double {mustBeInteger, mustBePositive} = 100
-    useBaseSeed (1,1) logical = true
+    groupSeed (1,1) double {mustBePositive, mustBeInteger} = 10000
     overwrite (1,1) logical = false
     fileName (1,1) string = "MCData"
 end
@@ -26,6 +26,10 @@ for i_exp = 1:length(expsParams)
     if ~isfield(expsParams(i_exp), "stepPlotMod") || isempty(expsParams(i_exp).stepPlotMod)
         expsParams(i_exp).stepPlotMod = -2;
     end
+    % Disable waiting for confirmation, if not specified
+    if ~isfield(expsParams(i_exp), "waitForConf") || isempty(expsParams(i_exp).waitForConf)
+        expsParams(i_exp).waitForConf = false;
+    end
     % Disable recording, if not specified
     if ~isfield(expsParams(i_exp), "stepRecMod") || isempty(expsParams(i_exp).stepRecMod)
         expsParams(i_exp).stepRecMod = -1;
@@ -33,10 +37,6 @@ for i_exp = 1:length(expsParams)
     % Disable recording of initial step, if not specified
     if ~isfield(expsParams(i_exp), "recInitStep") || isempty(expsParams(i_exp).recInitStep)
         expsParams(i_exp).recInitStep = false;
-    end
-    % Disable waiting for confirmation, if not specified
-    if ~isfield(expsParams(i_exp), "waitForConf") || isempty(expsParams(i_exp).waitForConf)
-        expsParams(i_exp).waitForConf = false;
     end
 end
 
@@ -68,11 +68,11 @@ fprintf("Pool size: %i\n\n", poolsize)
 fprintf("Start group: %i\n\n", startGroup)
 fprintf("End group: %i\n\n", endGroup)
 fprintf("Number of Monte Carlo simulations: %i\n\n", nMC)
-fprintf("Use base seed: %i\n\n", useBaseSeed)
+fprintf("Group seed: %i\n\n", groupSeed)
 fprintf("Overwrite: %i\n\n", overwrite)
 fprintf("File name: %s\n\n", fileName)
 
-% Save info files with poolsize and groupcount for later processing
+% Check for directories
 for i_exp = 1:length(expsParams)
     params = expsParams(i_exp);
     folderPath = folderPathFunc(params, i_exp);
@@ -81,13 +81,6 @@ for i_exp = 1:length(expsParams)
     if ~exist(folderPath,"dir")
         mkdir(folderPath);
     end
-
-    infoPath = sprintf("%s/info.mat", folderPath);
-    if isfile(infoPath) && (overwrite == false)
-        fprintf("File on path \n%s \nalready exists, and overwriting is not allowed. Saving as 'DUPLICATE'.\n\n", infoPath)
-        infoPath = sprintf("%s/DUPLICATE_info.mat", folderPath);
-    end 
-    save(infoPath, "poolsize", "groupCount");
 end
 
 % Divide the run into groups, which have the same size as there is workers,
@@ -96,11 +89,11 @@ for group = startGroup:endGroup
     % Run through all of the given experiment parameters
     for i_exp = 1:length(expsParams)
         params = expsParams(i_exp);
-        postfix = filePostfixFunc(params, i_exp) + "_" + MCGroupFilePostfix(group, groupCount);
+        postfix = filePostfixFunc(params, i_exp) + "_" + MCGroupFilePostfix(group);
         params.expTitle = postfix;
         
-        if useBaseSeed
-            baseSeed = (group-1) * poolsize;
+        if groupSeed >= poolsize
+            baseSeed = (group-1) * groupSeed;
             % Run parallel simulations with baseSeed
             [results, time] = MonteCarlo(params, poolsize, baseSeed);
         else

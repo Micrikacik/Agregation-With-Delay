@@ -2,17 +2,22 @@
 %%% TEMP SCRIPT %%%
 %%%%%%%%%%%%%%%%%%%
 
-
-d = 2;
-delayType = "Transmission";
 fileName = "MCData";
 
+[params, folderPathFunc, filePostfixFunc] = makeDelayExpsParams(2,0:30:420,"Reaction");
 
+totalSame = 0;
 
-for stepDelay = [10000:10000:100000]
-    path = MCFilePath(MCFolderPath(delayType,d,stepDelay),fileName,MCFilePostfix(delayType,d,stepDelay));
+for i_exp = 1:length(params)
+    par = params(i_exp);
+
+    folderPath = folderPathFunc(params, i_exp);
+    postfix = filePostfixFunc(params, i_exp);
+    
+    path = MCFilePath(folderPath, fileName, postfix);
     results = load(path).results;
-    fprintf("Started %i\n", stepDelay)
+    fprintf("Started \n")
+    disp(par)
     same = 0;
     for i = 1:length(results)
         for j = i+1:length(results)
@@ -23,25 +28,10 @@ for stepDelay = [10000:10000:100000]
             end
         end
     end
-    fprintf("\nfinished %i, same: %i\n", stepDelay, same)
+    fprintf("\nFinished \n")
+    disp(par)
+    fprintf("same: %i\n", same)
+    totalSame = totalSame + same;
 end
 
-% for stepDelay1 = 0:30:420
-%     fprintf("Start %i\n", stepDelay1)
-% for stepDelay2 = stepDelay1+30:30:420
-%     path1 = MCFilePath(MCFolderPath(delayType,d,stepDelay1),fileName,MCFilePostfix(delayType,d,stepDelay1));
-%     results1 = load(path1).results; % Load the data from the specified path
-%     path2 = MCFilePath(MCFolderPath(delayType,d,stepDelay2),fileName,MCFilePostfix(delayType,d,stepDelay2));
-%     results2 = load(path2).results; % Load the data from the specified path
-%     same(stepDelay/30+1) = 0;
-%     for i = 1:100
-%         for j = 1:100
-%             if norm(results1{i}.xRec(:,:,1) - results2{j}.xRec(:,:,1), "fro") < 0.001
-%             fprintf("(%i,%i,%i,%i)", stepDelay1, i, stepDelay2, j)
-%             same(stepDelay/30+1) = same(stepDelay/30+1) + 1;
-%             end
-%         end
-%     end
-%     fprintf("\nfinished %i, same: %i\n", stepDelay2, same(stepDelay/30+1))
-% end
-% end
+fprintf("\nTotal same: %i\n", totalSame)

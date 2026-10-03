@@ -1,4 +1,4 @@
-function [] = stackMCGroups(expsParams, folderPathFunc, filePostfixFunc, startGroup, endGroup, exceptFields, infoFile, fileName)
+function [] = stackMCGroups(expsParams, folderPathFunc, filePostfixFunc, startGroup, endGroup, exceptFields, fileName)
 
 arguments
     expsParams (:,1) struct
@@ -7,37 +7,46 @@ arguments
     startGroup double {mustBeInteger, mustBePositive} = []
     endGroup double {mustBeInteger, mustBePositive} = []
     exceptFields (:,1) string = []
-    infoFile (1,1) string = "info"
     fileName (1,1) string = "MCData"
 end
 
 count = length(expsParams);
 wBar = waitbar(0);
 
+if  isempty(endGroup)
+    endGroup = -1;
+end
+if isempty(startGroup)
+    startGroup = 1;
+end
+
+finiteGroup = startGroup <= endGroup;
+
 for i_exp = 1:count
-    wString = sprintf("Stacking experiment %i of %i ...", i_exp, count);
+    if finiteGroup
+        wString = sprintf("Stacking experiment %i of %i ...", i_exp, count);
+    else
+        wString = sprintf("Stacking experiment %i of %i, with unknown group count (no waitbar) ...", i_exp, count);
+    end
     waitbar(0, wBar, wString)
 
     params = expsParams(i_exp);
     folderPath = folderPathFunc(params, i_exp);
-    info = load(sprintf("%s/%s.mat", folderPath, infoFile));
-    % poolsize = info.poolsize; % Not needed
-    groupCount = info.groupCount;
-
-    if  isempty(endGroup)
-        endGroup = groupCount;
-    end
-    if isempty(startGroup)
-        startGroup = 1;
-    end
 
     stackedResults = struct([]); % start as an empty struct array
     time = 0;
     group_params = [];
 
-    for group = startGroup:endGroup
-        postfix = filePostfixFunc(params, i_exp) + "_" + MCGroupFilePostfix(group, groupCount);
+    group = startGroup;
+
+    while true
+        postfix = filePostfixFunc(params, i_exp) + "_" + MCGroupFilePostfix(group);
         filePath = MCFilePath(folderPath, fileName, postfix);
+
+        if ~isfile(filePath) || (finiteGroup && group > endGroup)
+            break
+        end
+
         experiment = load(filePath);
 
         % Check if parameters between groups are the same
@@ -66,7 +75,11 @@ for i_exp = 1:count
                             results         ];
 
         fprintf("Finished group %i.\n",group)
-        waitbar(group / groupCount, wBar, wString)
+        if finiteGroup
+            waitbar(group / endGroup, wBar, wString)
+        end
+
+        group = group + 1;
     end
 
     wString = sprintf("Saving file %i of %i ...", i_exp, count);

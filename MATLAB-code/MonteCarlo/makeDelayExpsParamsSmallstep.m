@@ -19,11 +19,11 @@ expsParams = struct( ...
         "tau", tau, ...% FIXED
         ...% No initial history controll
         "waitForConf", false, ...% FIXED
-        "stepPlotMod", -2 ...% FIXED
+        "stepPlotMod", -2, ...% FIXED
         ...% No agent marking
         ...% No color for agent marking
-        ...% No position recording
-        ...% No initial position recording
+        "stepRecMod", -1, ...% FIXED
+        "recInitStep", false ...% FIXED
         ...% Same rec mod for theta as for x
         ...% Record initial theta if recording initial x
         ...% No position recording
