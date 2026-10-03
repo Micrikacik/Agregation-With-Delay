@@ -138,7 +138,7 @@ if ~isfield(expParams,"rho0") || ~isfloat(expParams.rho0) || isempty(expParams.r
         gridPointCount = 400;                % default grid point count
         fprintf("   Setting gridPointCount = %i.\n", gridPointCount);
     else
-        gridPointCount = single(expParams.gridPointCount);
+        gridPointCount = expParams.gridPointCount;
         fprintf("   gridPointCount = %i.\n", gridPointCount)
     end
     fprintf('   |\n')
@@ -383,7 +383,7 @@ end
 tol = 100 * eps(L);
 
 % Normalization multiplier
-multip = 1 / (1 + 2 * floor(((intRad - tol) - dx) / 2 / dx));
+multip = 1 / ( 1 + 2 * floor((intRad - tol) / dx) );
 
 % Pre-calculate the distances over the periodic/reflected domain
 switch boundConds 
@@ -423,6 +423,8 @@ switch boundConds
         error("Undefined boundary conditions: '%.i'", boundConds);
 end
 
+assignin("base","WWW",W);
+assignin("base","dddxxx",dx)
 
 % Make new figure if simulation is plotted and plot initial density
 if stepPlotMod > 0
@@ -449,14 +451,14 @@ for t = 1:stepCount
 
     % Calculate G
     WConvRhoDelayed = W * rhoDelayed;
-    G_sqrd = exp(-respDecay * WConvRhoDelayed); % midstep
-    G_sqrd = G_sqrd.^2;
+    G_sqrd = exp(-respDecay * WConvRhoDelayed) .^ 2;
     
     %calculate the L^2 norm
     %E(t)=sum((rho.^2).*G);
         
     % Compose the matrix for semi-implicit finite differences
-    A = diag(1+dtxx*G_sqrd) - 0.5*dtxx*diag(G_sqrd(2:gridPointCount),1) - 0.5*dtxx*diag(G_sqrd(1:gridPointCount-1),-1);
+    A = diag(1+dtxx*G_sqrd) - 0.5*dtxx*diag(G_sqrd(2:gridPointCount),1) - ...
+        0.5*dtxx*diag(G_sqrd(1:gridPointCount-1),-1);
     
     % Adjust to BCs
     switch boundConds
@@ -464,11 +466,13 @@ for t = 1:stepCount
             A(1,gridPointCount) = -0.5*dtxx*G_sqrd(gridPointCount);
             A(gridPointCount,1) = -0.5*dtxx*G_sqrd(1);
         case "Reflective"
-            A(1,2) = -0.5*dtxx*G_sqrd(2);
-            A(gridPointCount,gridPointCount-1) = -0.5*dtxx*G_sqrd(gridPointCount-1);
+            A(1,2) = A(1,2)-0.5*dtxx*G_sqrd(2);
+            A(gridPointCount,gridPointCount-1) = A(gridPointCount,gridPointCount-1)-0.5*dtxx*G_sqrd(gridPointCount-1);
         otherwise
             error("Undefined boundary conditions: '%.i'", boundConds);
     end
+
+assignin("base","AAA",A);
 
     % Make the step
     rho = A \ rho;
@@ -485,7 +489,7 @@ for t = 1:stepCount
     % Record simulation step
     if t < stepCount % Last step is recorded after this loop (since we could get mod(stepCount,stepRecMod) ~= 0, so we record it specially after the loop)
         if stepRecMod ~= -1 && mod(t,stepRecMod) == 0
-            rhoRec(:,:,rhoRecIndex) = rho;
+            rhoRec(:,rhoRecIndex) = rho;
             rhoRecIndex = rhoRecIndex + 1;
         end
     end
@@ -534,7 +538,7 @@ if recordVideo
 end
 
 % Record final simulation step (the final step might not have been possible to record in the loop)
-rhoRec(:,:,end) = rho;
+rhoRec(:,end) = rho;
 
 % Record last history of rho - just permute the history
 % The coefficient was decreased in the final step, so we need to increase it back

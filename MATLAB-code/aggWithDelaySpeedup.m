@@ -188,7 +188,7 @@ if ~isfield(expParams,"x0") || ~isfloat(expParams.x0) || isempty(expParams.x0)
         N = 400;                % default number of particles
         fprintf("   Setting N = %i.\n", N);
     else
-        N = single(expParams.N);
+        N = expParams.N;
         fprintf("   N = %i.\n", N)
     end
     if ~isfield(expParams,"d") || ~IsInteger(expParams.d) || expParams.d < 1 || ...
@@ -197,7 +197,7 @@ if ~isfield(expParams,"x0") || ~isfloat(expParams.x0) || isempty(expParams.x0)
         d = 2;                  % default dimension of the space
         fprintf("   Setting d = %i.\n", d);
     else
-        d = single(expParams.d);
+        d = expParams.d;
         fprintf("   d = %i.\n", d)
     end
     fprintf('   |\n')

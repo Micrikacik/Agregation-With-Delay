@@ -6,12 +6,14 @@
 rng(1);
 
 % coefficient setting:
+d = 1;
 dt = 1e-3;             % time step length
 phys_tau = 1;          % "physical" delay
 tau = floor(phys_tau/dt);     % delay measured in dt
-int_r = getIntRad(1);           % interaction radius
+int_r = getIntRad(d);           % interaction radius
 a=1;                    % G(s) = exp(-a*s)
 L = 1;                  % interval length
+maxInitFluc = 0.01;
 
 Nx = 400;               % number of gridpoints
 dx = L / Nx;
@@ -34,17 +36,13 @@ A=zeros(Nx,Nx);
 
 
 % Initial condition for rho
-rho = rand(Nx,1);
-
-%Normalize such that max(rho) = 1;
-rho = rho/(dx*sum(rho));
+fluctuations = makeFluctuations(maxInitFluc, Nx, d);
+rho = 1 + fluctuations;
 
 rhoBuf = zeros(tau,Nx);
-rhoBuf(1,:) = rho;
-for t=2:tau
-    rrho = rand(Nx,1);
-    rrho = rrho/(dx*sum(rrho));
-    rhoBuf(t,:) = rrho;
+rhoInit = genRhoInitHist(maxInitFluc, Nx, tau, L, d);
+for t=1:tau
+    rhoBuf(t,:) = rhoInit(:,t).';
 end
 
 
@@ -64,19 +62,22 @@ for i = 1:Nx
     W(i,:) = circshift(w, [0, i-1]);
 end
 
+ttau = tau;
+
 % solve for t=1:T
 for t=1:T
     
-    ttau = mod(t-1-tau,tau)+1;
     rhodelay = rhoBuf(ttau,:)';
 
     %store present rho to the buffer
-    rhoBuf(ttau,:,:) = rho;
+    rhoBuf(ttau,:) = rho;
+    ttau = ttau - 1;
+    ttau = mod(ttau-1,tau)+1;
 
     %calculate G
     Wrho = W*rhodelay;
     F = exp(-a*Wrho);
-    G = (F.^2)/2;
+    G = (F.^2);
     
     %calculate the L^2 norm
     %E(t)=sum((rho.^2).*G);
