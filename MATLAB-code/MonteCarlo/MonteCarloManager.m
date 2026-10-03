@@ -1,7 +1,6 @@
-function [] = MonteCarloManager(expsParams, folderPathFunc, filePostfixFunc, startGroup, endGroup, nMC, groupSeed, overwrite, fileName)
+function [] = MonteCarloManager(expsParams, folderPathFunc, filePostfixFunc, startGroup, endGroup, baseGroupSeed, overwrite, fileName)
 
 % expsParams (structure array) - contains parameters to the experiments
-% nMC (positive integer) - number of Monte Carlo simulations
 % folderPathFunc & filePostfixFunc (function handle) - functions with 
 %   experiment parameters and experiment index (i_exp = 1:length(expsParams)) as
 %   input, which returns folderPath to where the results will be saved and filePostfix
@@ -15,8 +14,7 @@ arguments
     filePostfixFunc function_handle
     startGroup double {mustBeInteger, mustBePositive} = []
     endGroup double {mustBeInteger, mustBePositive} = []
-    nMC (1,1) double {mustBeInteger, mustBePositive} = 100
-    groupSeed (1,1) double {mustBePositive, mustBeInteger} = 10000
+    baseGroupSeed (1,1) double {mustBePositive, mustBeInteger} = 10000
     overwrite (1,1) logical = false
     fileName (1,1) string = "MCData"
 end
@@ -48,13 +46,16 @@ else
     poolsize = p.NumWorkers;
 end
 
-groupCount = ceil(nMC / poolsize);
-% Set default values for 'endGroup' and 'startGroup'
-if  isempty(endGroup)
-    endGroup = groupCount;
-end
+% Set default values for 'startGroup' and 'endGroup'
 if isempty(startGroup)
     startGroup = 1;
+end
+if  isempty(endGroup)
+    % Default group count
+    % If startGroup==1, then we still need to make 100 simulations
+    groupCount = ceil((100 - poolsize * (startGroup - 1)) / poolsize);
+    % If groupCount==1, then we must have startGroup==endGroup
+    endGroup = startGroup + groupCount - 1;
 end
 
 fprintf("Experiment parameters (values will be displayed when simulations start):\n")
@@ -67,8 +68,9 @@ fprintf("Group count: %i\n\n", groupCount)
 fprintf("Pool size: %i\n\n", poolsize)
 fprintf("Start group: %i\n\n", startGroup)
 fprintf("End group: %i\n\n", endGroup)
-fprintf("Number of Monte Carlo simulations: %i\n\n", nMC)
-fprintf("Group seed: %i\n\n", groupSeed)
+fprintf("Number of Monte Carlo simulations\n in THIS batch\n" + ...
+    "    for each experiment parameter: %i\n\n", (endGroup - startGroup + 1) * poolsize)
+fprintf("Group seed: %i\n\n", baseGroupSeed)
 fprintf("Overwrite: %i\n\n", overwrite)
 fprintf("File name: %s\n\n", fileName)
 
@@ -92,12 +94,12 @@ for group = startGroup:endGroup
         postfix = filePostfixFunc(params, i_exp) + "_" + MCGroupFilePostfix(group);
         params.expTitle = postfix;
         
-        if groupSeed >= poolsize
-            baseSeed = (group-1) * groupSeed;
-            % Run parallel simulations with baseSeed
-            [results, time] = MonteCarlo(params, poolsize, baseSeed);
+        if baseGroupSeed >= poolsize
+            groupSeed = (group-1) * baseGroupSeed;
+            % Run parallel simulations with groupSeed
+            [results, time] = MonteCarlo(params, poolsize, groupSeed);
         else
-            % Run parallel simulations without baseSeed
+            % Run parallel simulations without groupSeed
             [results, time] = MonteCarlo(params, poolsize);
         end
 
