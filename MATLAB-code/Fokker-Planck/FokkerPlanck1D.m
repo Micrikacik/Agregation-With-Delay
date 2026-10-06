@@ -1,4 +1,4 @@
-function [rhoRec, rhoHist, rngSetts] = FokkerPlanck1D(expParams)
+function [rhoRec, rhoHist] = FokkerPlanck1D(expParams)
 
 % Runs the discretized continuous simulation of agregation with a constant delay.
 %
@@ -14,11 +14,7 @@ function [rhoRec, rhoHist, rngSetts] = FokkerPlanck1D(expParams)
 %       RNG:
 %       rngSeed (nonnegative integer) - rng seed to replicate experiments.
 %       rngSetts (struct) - struct returned by the rng function, containing
-%           random generator settings. This struct is also an output of
-%           this function, and is created after the simulation is done.
-%           This field's main goal is to enable user to continue in an
-%           experiment which already finished, by using the values it
-%           returned as initial conditions and random generator settings.
+%           random generator settings.
 %
 %       SPACE & INITIAL CONDITIONS:
 %       rho0 (positive float COLUMN vector) - vector of initial discretized density. 
@@ -81,10 +77,6 @@ function [rhoRec, rhoHist, rngSetts] = FokkerPlanck1D(expParams)
 %   rhoHist (float matrix) - 2 dimensional matrix of the last history of
 %       densities, which still affect the following simulation steps.
 %       Its dimensions are [gridPointCount, stepDelay]. 
-%       It can be directly plugged in as an input to this function to 
-%       continue in the experiment.
-%   rngSetts (struct) - struct returned by the rng function, containing
-%       random generator settings right after the simulation have finished.
 %       It can be directly plugged in as an input to this function to 
 %       continue in the experiment.
 
@@ -423,9 +415,6 @@ switch boundConds
         error("Undefined boundary conditions: '%.i'", boundConds);
 end
 
-assignin("base","WWW",W);
-assignin("base","dddxxx",dx)
-
 % Make new figure if simulation is plotted and plot initial density
 if stepPlotMod > 0
     figure
@@ -443,8 +432,7 @@ for t = 1:stepCount
         rhoHist(:,histCoeff) = rho;
 
         % Update hist coeff
-        histCoeff = histCoeff - 1;
-        histCoeff = mod(histCoeff - 1, stepDelay) + 1;
+        histCoeff = mod(histCoeff - 2, stepDelay) + 1;
     else
         rhoDelayed = rho;
     end
@@ -471,8 +459,6 @@ for t = 1:stepCount
         otherwise
             error("Undefined boundary conditions: '%.i'", boundConds);
     end
-
-assignin("base","AAA",A);
 
     % Make the step
     rho = A \ rho;
@@ -548,9 +534,6 @@ if lastIndex >= stepDelay
 end
 permutation = [lastIndex:stepDelay, 1:lastIndex-1];
 rhoHist = rhoHist(:,permutation);
-
-% Return random generator settings
-rngSetts = rng;
 
 fprintf("----------------------------------\n\n")
 fprintf("Simulation")

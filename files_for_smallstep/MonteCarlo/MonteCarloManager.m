@@ -68,8 +68,8 @@ fprintf("Group count: %i\n\n", groupCount)
 fprintf("Pool size: %i\n\n", poolsize)
 fprintf("Start group: %i\n\n", startGroup)
 fprintf("End group: %i\n\n", endGroup)
-fprintf("Number of Monte Carlo simulations\n in THIS batch\n" + ...
-    "    for each experiment parameter: %i\n\n", (endGroup - startGroup + 1) * poolsize)
+fprintf("Number of Monte Carlo simulations in THIS batch\n" + ...
+    "   for each experiment parameter: %i\n\n", (endGroup - startGroup + 1) * poolsize)
 fprintf("Group seed: %i\n\n", baseGroupSeed)
 fprintf("Overwrite: %i\n\n", overwrite)
 fprintf("File name: %s\n\n", fileName)

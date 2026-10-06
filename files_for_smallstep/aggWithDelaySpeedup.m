@@ -22,12 +22,12 @@ function [xRec, thetaRec, thetaOccur, xHist, rngSetts] = aggWithDelaySpeedup(exp
 %
 %       SPACE & INITIAL CONDITIONS:
 %       x0 (float matrix) - matrix of initial positions.
-%           x(i,:) - position (float vector) in [0,1]^d of the i-th agent.
+%           x(i,:) - position (float vector) in d-dim torus of the i-th agent.
 %           Alternatively, instead of x0, set the dimension d and number of
 %           agents N.
 %       dims (positive float ROW vector) - dimensions of the simulation, i.e., dimensions
 %           of the box, in which the agents move.
-%           Thic row vector does NOT influence the parameter d, in fact, dims
+%           This row vector does NOT influence the parameter d, in fact, dims
 %           will be either truncated or filled up with 1, to match its
 %           length with d.
 %
@@ -270,10 +270,10 @@ end
 % Step count
 if ~isfield(expParams,"stepCount") || ~IsInteger(expParams.stepCount) || expParams.stepCount < 0 || ...
         ~isequal(size(expParams.stepCount),[1,1])
-    fprintf("Either no or wrong value for the number of time steps 'stepCount'.\n")
     if ~isfield(expParams,"T") || ~isfloat(expParams.T) || expParams.T <= 0 || ...
         ~isequal(size(expParams.T), [1,1])
-        fprintf("Either no or wrong value for the total simulation time 'T'.\n")
+        fprintf("Either no or wrong value for both the number of time steps 'stepCount'" + ...
+            " and the total simulation time 'T'.\n")
         stepCount = 1000;                    % default number of time steps
         fprintf("Setting stepCount = %i (T = %.3d).\n\n", stepCount, stepCount * dt)
     else
@@ -301,10 +301,10 @@ end
 if delayType ~= "None"
     if ~isfield(expParams,"stepDelay") || ~IsInteger(expParams.stepDelay) || expParams.stepDelay < 0 || ...
             ~isequal(size(expParams.stepDelay),[1,1])
-        fprintf("Either no or wrong value for the step delay 'stepDelay'.\n")
         if ~isfield(expParams,"tau") || ~isfloat(expParams.tau) || expParams.tau < 0 || ...
             ~isequal(size(expParams.tau),[1,1])
-            fprintf("Either no or wrong value for the delay 'tau'.\n")
+            fprintf("Either no or wrong value for both the step delay 'stepDelay'" + ...
+                " and the delay 'tau'.\n")
             stepDelay = 5;                    % default number of time steps
             fprintf("Setting stepDelay = %i (tau = %.3d).\n\n", stepDelay, stepDelay * dt)
         else
@@ -318,7 +318,7 @@ if delayType ~= "None"
     end
 else
     stepDelay = 0;
-    fprintf("No step delay (tau = 0), since delay type in 'None'.\n\n")
+    fprintf("Delay type 'None' detected. Forcing delay to be 0.\n\n")
 end
 
 % Forcing no delay
@@ -332,14 +332,14 @@ if delayType ~= "None"
     if ~isfield(expParams,"xInitHist") || ~isfloat(expParams.xInitHist) || ...
             ~isequal(size(expParams.xInitHist),[N,d,stepDelay])
         fprintf("Either no or wrong value for the matrix of initial history of positions 'xInitHist'.\n")
-        xHist = genInitHist(x,dt,stepDelay,boundConds,dims);  % default initial history
+        xHist = genInitHist(x, dt, stepDelay, boundConds, dims);  % default initial history
         fprintf("Initializing experiment with 'blind motion' initial history.\n\n")
     else
         xHist = expParams.xInitHist;
         fprintf("xInitHist accepted.\n\n")
     end
 else
-    xHist = genInitHist(x,dt,0,boundConds,dims); % Returns empty history
+    xHist = []; % No delay, no history
     fprintf("No initial history, since there is no delay.\n\n")
 end
 
@@ -373,7 +373,7 @@ if stepPlotMod > 0
     % Marked agents colors
     if ~isfield(expParams,"markColors") || ~isfloat(expParams.markColors) || ...
             any(expParams.markColors < 0) || any(expParams.markColors > 1) || ...
-            ~isequal(size(expParams.markColors),[N,3])
+            ~isequal(size(expParams.markColors), [length(markAgents),3])
         fprintf("Either no or wrong value for the marked agents colors 'markAgents'.\n")
         markColors = repmat([1,0,0],[length(markAgents),1]);
         fprintf("Setting marked agents colors to red.\n\n")
@@ -430,14 +430,14 @@ end
 
 if ~isfield(expParams, "waitForConf") || expParams.waitForConf == true
     fprintf("----------------------------------\n\n")
-    fprintf("Press space to start the simulation.\n\n")
+    fprintf("Press any key to start the simulation.\n\n")
     pause
 end
 
 
 fprintf("----------------------------------\n\n")
 fprintf("Starting the simulation")
-if isfield(expParams,"expTitle") && isstring(expParams.expTitle) && isequal(size(expParams.expTitle),[1,1])
+if isfield(expParams, "expTitle") && isstring(expParams.expTitle) && isequal(size(expParams.expTitle),[1,1])
     fprintf(", title: %s", expParams.expTitle)
 end
 fprintf(".\n\n")
@@ -477,7 +477,7 @@ end
 
 % Auxiliary function to determine the count of to be recorded steps
 function count = getRecCount(module)
-    % We do not want to record
+    % We want to record
     if module > 0
         count = ceil(stepCount / module);
         if count == 0
@@ -507,12 +507,12 @@ thetaRecCount = getRecCount(thetaRecMod);
 % Setup to record initial theta
 if (isfield(expParams,"recInitTheta") && expParams.recInitTheta == true) || ...
         isfield(expParams,"recInitStep") && expParams.recInitStep == true
-    thetaRec = zeros([N,2,thetaRecCount + 1]);
-    thetaRec(:,1,1) = getTheta(getDistsSqrd(x,x));
-    thetaRec(:,2,1) = getTheta(getDelayedDistsSqrd(x,xHist,histCoeff,delayType));
+    thetaRec = zeros([N, 2, thetaRecCount + 1]);
+    thetaRec(:,1,1) = getTheta(getDistsSqrd(x, x));
+    thetaRec(:,2,1) = getTheta(getDelayedDistsSqrd(x, xHist, histCoeff, delayType));
     thetaRecIndex = 2;
 else 
-    thetaRec = zeros([N,d,thetaRecCount]);
+    thetaRec = zeros([N, d, thetaRecCount]);
     thetaRecIndex = 1;
 end
 
@@ -521,9 +521,9 @@ thetaOccur = zeros(N+1,N+1);    % 0 <= number of neighbours <= N (N + 1 due to p
 
 % Count initial occurances (so the edge case stepCount = 0 works properly)
 if thetaOccurMod ~= -1
-    intCountsRealTime = getIntCountsFromDSqrd(getDistsSqrd(x,x));
-    intCountsDelayed = getIntCountsFromDSqrd(getDelayedDistsSqrd(x,xHist,histCoeff,delayType));
-    indexes = [intCountsRealTime(:),intCountsDelayed(:)] + 1; % Shift by one to include case where intCount is 0 (this can happen in Transmission type delay)
+    intCountsRealTime = getIntCountsFromDSqrd(getDistsSqrd(x, x));
+    intCountsDelayed = getIntCountsFromDSqrd(getDelayedDistsSqrd(x, xHist, histCoeff, delayType));
+    indexes = [intCountsRealTime(:), intCountsDelayed(:)] + 1; % Shift by one to include case where intCount is 0 (this can happen in Transmission type delay)
     thetaOccur = accumarray(indexes, 1, size(thetaOccur));
 end
 
@@ -531,11 +531,11 @@ memorizable = (delayType == "Reaction");
 % If the delayType is 'Reaction', we can save some calculations
 % on recording theta and incrementing thetaOccur
 if memorizable
-    intCountsHist = zeros(N,stepDelay);
+    intCountsHist = zeros(N, stepDelay);
     % Initialize the intCounts history from the initial history of x
     for i = stepDelay:-1:1
         oldX = xHist(:,:,i);
-        intCountsHist(:,i) = getIntCountsFromDSqrd(getDistsSqrd(oldX,oldX));
+        intCountsHist(:,i) = getIntCountsFromDSqrd(getDistsSqrd(oldX, oldX));
     end
 end
 
@@ -547,12 +547,12 @@ for t = 1:stepCount
     if memorizable % We have already calculated it in the past
         intCountsDelayed = intCountsHist(:,histCoeff);
         % Update the history
-        DSqrd = getDistsSqrd(x,x); % We calculate the current one to be used int the future
+        DSqrd = getDistsSqrd(x, x); % We calculate the current one to be used int the future
         intCountsRealTime = getIntCountsFromDSqrd(DSqrd);
         intCountsHist(:,histCoeff) = intCountsRealTime;
         % The hist coeff will be updated later
     else % We must calculate it anew
-        DSqrd = getDelayedDistsSqrd(x,xHist,histCoeff,delayType);
+        DSqrd = getDelayedDistsSqrd(x, xHist, histCoeff, delayType);
         intCountsDelayed = getIntCountsFromDSqrd(DSqrd);
     end
 
@@ -576,12 +576,12 @@ for t = 1:stepCount
             % If it is memorizable or no delay, intCountsRealTime were already
             % calculated, if not, we need to calculate them now
             if ~memorizable && delayType ~= "None"
-                intCountsRealTime = getIntCountsFromDSqrd(getDistsSqrd(x,x));
+                intCountsRealTime = getIntCountsFromDSqrd(getDistsSqrd(x, x));
             end
             
             % Count the occurrences of the theta couples and add them to
             % the whole count
-            indexes = [intCountsRealTime(:),intCountsDelayed(:)] + 1; % Shift by one to include case where intCount is 0
+            indexes = [intCountsRealTime(:), intCountsDelayed(:)] + 1; % Shift by one to include case where intCount is 0
             prevStepThetaOccur = accumarray(indexes, 1, size(thetaOccur));
             thetaOccur = thetaOccur + prevStepThetaOccur;
         end
@@ -590,14 +590,14 @@ for t = 1:stepCount
     % Local density
     thetaDelayed = getThetaFromIntCounts(intCountsDelayed);
 
-    % Record theta from the previous (t-1) step 
+    % Record theta from the previous (t-1) step
     % (to reduce calls of getDelayedDistsSqrd())
     if t > 1 % Initial step is already recorded
         if thetaRecMod ~= -1 && mod(t-1,thetaRecMod) == 0
             % If it is memorizable or no delay, intCountsRealTime were already
             % calculated, if not, we need to calculate them now
             if ~memorizable && delayType ~= "None"
-                intCountsRealTime = getIntCountsFromDSqrd(getDistsSqrd(x,x));
+                intCountsRealTime = getIntCountsFromDSqrd(getDistsSqrd(x, x));
             end
 
             thetaRealTime = getThetaFromIntCounts(intCountsRealTime);
@@ -617,22 +617,10 @@ for t = 1:stepCount
     x = x + sqrt(dt) * updt;
 
     % Apply BCs
-    switch boundConds
-        case "NoBoundary"
-            % No BCs - do nothing
-        case "Periodic"
-            % Periodic BCs
-            x = mod(x,dims);
-        case "Reflective"
-            % Reflective BCs
-            x = abs(x);
-            x = dims - abs(dims - x);
-        otherwise
-            error("Undefined boundary conditions: '%.i'", boundConds);
-    end
+    x = applyBCs(x, boundConds, dims);
 
     % Plot - to make correct 1D plot, we need current theta
-    if stepPlotMod > 0 && mod(t,stepPlotMod) == 0
+    if stepPlotMod > 0 && mod(t, stepPlotMod) == 0
         DSqrd = getDistsSqrd(x,x);
         theta = getTheta(DSqrd);
         plotSimStep(theta)
@@ -675,13 +663,13 @@ end
 function DSqrd = getDelayedDistsSqrd(x, xHist, histCoeff, delayType)
     switch delayType
         case "Reaction"
-            DSqrd = getDistsSqrd(xHist(:,:,histCoeff),xHist(:,:,histCoeff));
+            DSqrd = getDistsSqrd(xHist(:,:,histCoeff), xHist(:,:,histCoeff));
         case "Transmission"
-            DSqrd = getDistsSqrd(x,xHist(:,:,histCoeff));
+            DSqrd = getDistsSqrd(x, xHist(:,:,histCoeff));
         case "Inner"
-            DSqrd = getDistsSqrd(xHist(:,:,histCoeff),x);
+            DSqrd = getDistsSqrd(xHist(:,:,histCoeff), x);
         case "None"
-            DSqrd = getDistsSqrd(x,x);
+            DSqrd = getDistsSqrd(x, x);
         otherwise
             error('Invalid delay type.');
     end
@@ -689,17 +677,17 @@ end
 
 % Calculates the distance matrix from the given position matrices
 % Takes into account boundary conditions
-function DSqrd = getDistsSqrd(x_1,x_2)
+function DSqrd = getDistsSqrd(x_1, x_2)
     switch boundConds
         case "NoBoundary"
             % No BCs
-            DSqrd = distancesSqrd(x_1,x_2);
+            DSqrd = distancesSqrd(x_1, x_2);
         case "Periodic"
             % Distances on torus
-            DSqrd = torusDistancesSqrd(x_1,x_2,dims);
+            DSqrd = torusDistancesSqrd(x_1, x_2, dims);
         case "Reflective"
             % Normal distances
-            DSqrd = distancesSqrd(x_1,x_2);
+            DSqrd = distancesSqrd(x_1, x_2);
         otherwise
             error('Invalid boundary conditions.');
     end
@@ -731,9 +719,16 @@ if recordVideo
 end
 
 % Record final simulation step (the final step might not have been possible to record in the loop)
+% xRec
 xRec(:,:,end) = x;
-thetaRec(:,1,end) = getTheta(getDistsSqrd(x,x));
-thetaRec(:,2,end) = getTheta(getDelayedDistsSqrd(x,xHist,histCoeff,delayType));
+% thetaRec
+thetaRec(:,1,end) = getTheta(getDistsSqrd(x, x));
+thetaRec(:,2,end) = getTheta(getDelayedDistsSqrd(x, xHist, histCoeff, delayType));
+% thetaOccur
+intCountsRealTime = getIntCountsFromDSqrd(getDistsSqrd(x, x));
+intCountsDelayed = getIntCountsFromDSqrd(getDelayedDistsSqrd(x, xHist, histCoeff, delayType));
+indexes = [intCountsRealTime(:), intCountsDelayed(:)] + 1; % Shift by one to include case where intCount is 0 (this can happen in Transmission type delay)
+thetaOccur = accumarray(indexes, 1, size(thetaOccur));
 
 % Record last history of x - just permute the history
 % The coefficient was decreased in the final step, so we need to increase it back

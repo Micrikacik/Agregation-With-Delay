@@ -428,21 +428,6 @@ end
 %---------------------------------------------------------------------------
 
 
-if ~isfield(expParams, "waitForConf") || expParams.waitForConf == true
-    fprintf("----------------------------------\n\n")
-    fprintf("Press any key to start the simulation.\n\n")
-    pause
-end
-
-
-fprintf("----------------------------------\n\n")
-fprintf("Starting the simulation")
-if isfield(expParams, "expTitle") && isstring(expParams.expTitle) && isequal(size(expParams.expTitle),[1,1])
-    fprintf(", title: %s", expParams.expTitle)
-end
-fprintf(".\n\n")
-
-
 % Set auxiliary variables
 
 % Coefficient to access history
@@ -457,6 +442,7 @@ end
 % Setup VideoWriter if the simulation is recorded
 recordVideo = false;
 if isfield(expParams,"recordVideoPath") && isstring(expParams.recordVideoPath)
+    fprintf("Making the video of the plot at %s.\n\n", expParams.recordVideoPath)
     recordVideo = true;
     vidWrit = VideoWriter(sprintf("%s.avi",expParams.recordVideoPath));
     frameTime = stepPlotMod * dt;
@@ -493,6 +479,7 @@ xRecCount = getRecCount(stepRecMod);
 
 % Setup to record initial step
 if isfield(expParams,"recInitStep") && expParams.recInitStep == true
+    fprintf("Recording initial step.\n\n")
     xRec = zeros([N,d,xRecCount + 1]);
     xRec(:,:,1) = x;
     xRecIndex = 2;
@@ -507,6 +494,7 @@ thetaRecCount = getRecCount(thetaRecMod);
 % Setup to record initial theta
 if (isfield(expParams,"recInitTheta") && expParams.recInitTheta == true) || ...
         isfield(expParams,"recInitStep") && expParams.recInitStep == true
+    fprintf("Recording initial theta.\n\n")
     thetaRec = zeros([N, 2, thetaRecCount + 1]);
     thetaRec(:,1,1) = getTheta(getDistsSqrd(x, x));
     thetaRec(:,2,1) = getTheta(getDelayedDistsSqrd(x, xHist, histCoeff, delayType));
@@ -521,6 +509,7 @@ thetaOccur = zeros(N+1,N+1);    % 0 <= number of neighbours <= N (N + 1 due to p
 
 % Count initial occurances (so the edge case stepCount = 0 works properly)
 if thetaOccurMod ~= -1
+    fprintf("Recording initial theta occurances.\n\n")
     intCountsRealTime = getIntCountsFromDSqrd(getDistsSqrd(x, x));
     intCountsDelayed = getIntCountsFromDSqrd(getDelayedDistsSqrd(x, xHist, histCoeff, delayType));
     indexes = [intCountsRealTime(:), intCountsDelayed(:)] + 1; % Shift by one to include case where intCount is 0 (this can happen in Transmission type delay)
@@ -531,6 +520,7 @@ memorizable = (delayType == "Reaction");
 % If the delayType is 'Reaction', we can save some calculations
 % on recording theta and incrementing thetaOccur
 if memorizable
+    fprintf("Using memorization for speedup.\n\n")
     intCountsHist = zeros(N, stepDelay);
     % Initialize the intCounts history from the initial history of x
     for i = stepDelay:-1:1
@@ -538,6 +528,27 @@ if memorizable
         intCountsHist(:,i) = getIntCountsFromDSqrd(getDistsSqrd(oldX, oldX));
     end
 end
+
+
+if ~isfield(expParams, "waitForConf") || expParams.waitForConf == true
+    fprintf("----------------------------------\n\n")
+    fprintf("Press any key to start the simulation.\n\n")
+    pause
+end
+
+
+fprintf("----------------------------------\n\n")
+fprintf("Starting the simulation")
+if isfield(expParams, "expTitle") && isstring(expParams.expTitle) && isequal(size(expParams.expTitle),[1,1])
+    fprintf(", title: %s", expParams.expTitle)
+end
+fprintf(".\n\n")
+
+
+%---------------------------------------------------------------------------
+%---------------------------------------------------------------------------
+%---------------------------------------------------------------------------
+
 
 % Simulate for t=1:stepCount, this loop calculates the  step t from the step t-1
 for t = 1:stepCount
