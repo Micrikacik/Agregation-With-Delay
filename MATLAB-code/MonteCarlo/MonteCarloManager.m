@@ -1,15 +1,15 @@
-function [] = MonteCarloManager(expsParams, folderPathFunc, filePostfixFunc, startGroup, endGroup, baseGroupSeed, overwrite, fileName)
+function [] = MonteCarloManager(expParamsArray, folderPathFunc, filePostfixFunc, startGroup, endGroup, baseGroupSeed, overwrite, fileName)
 
-% expsParams (structure array) - contains parameters to the experiments
+% expParamsArray (structure array) - contains parameters to the experiments
 % folderPathFunc & filePostfixFunc (function handle) - functions with 
-%   experiment parameters and experiment index (i_exp = 1:length(expsParams)) as
+%   experiment parameters and experiment index (i_exp = 1:length(expParamsArray)) as
 %   input, which returns folderPath to where the results will be saved and filePostfix
 % TODOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
 % startGroup (positive integer)
 % endGroup (positive integer)
 
 arguments
-    expsParams (:,1) struct
+    expParamsArray (:,1) struct
     folderPathFunc function_handle
     filePostfixFunc function_handle
     startGroup double {mustBeInteger, mustBePositive} = []
@@ -19,22 +19,22 @@ arguments
     fileName (1,1) string = "MCData"
 end
 
-for i_exp = 1:length(expsParams)
+for i_exp = 1:length(expParamsArray)
     % Disable plotting, if not specified
-    if ~isfield(expsParams(i_exp), "stepPlotMod") || isempty(expsParams(i_exp).stepPlotMod)
-        expsParams(i_exp).stepPlotMod = -2;
+    if ~isfield(expParamsArray(i_exp), "stepPlotMod") || isempty(expParamsArray(i_exp).stepPlotMod)
+        expParamsArray(i_exp).stepPlotMod = -2;
     end
     % Disable waiting for confirmation, if not specified
-    if ~isfield(expsParams(i_exp), "waitForConf") || isempty(expsParams(i_exp).waitForConf)
-        expsParams(i_exp).waitForConf = false;
+    if ~isfield(expParamsArray(i_exp), "waitForConf") || isempty(expParamsArray(i_exp).waitForConf)
+        expParamsArray(i_exp).waitForConf = false;
     end
     % Disable recording, if not specified
-    if ~isfield(expsParams(i_exp), "stepRecMod") || isempty(expsParams(i_exp).stepRecMod)
-        expsParams(i_exp).stepRecMod = -1;
+    if ~isfield(expParamsArray(i_exp), "stepRecMod") || isempty(expParamsArray(i_exp).stepRecMod)
+        expParamsArray(i_exp).stepRecMod = -1;
     end
     % Disable recording of initial step, if not specified
-    if ~isfield(expsParams(i_exp), "recInitStep") || isempty(expsParams(i_exp).recInitStep)
-        expsParams(i_exp).recInitStep = false;
+    if ~isfield(expParamsArray(i_exp), "recInitStep") || isempty(expParamsArray(i_exp).recInitStep)
+        expParamsArray(i_exp).recInitStep = false;
     end
 end
 
@@ -59,7 +59,7 @@ if  isempty(endGroup)
 end
 
 fprintf("Experiment parameters (values will be displayed when simulations start):\n")
-disp(expsParams)
+disp(expParamsArray)
 fprintf("Folder path function:\n")
 disp(folderPathFunc)
 fprintf("File postfix function:\n")
@@ -69,15 +69,15 @@ fprintf("Pool size: %i\n\n", poolsize)
 fprintf("Start group: %i\n\n", startGroup)
 fprintf("End group: %i\n\n", endGroup)
 fprintf("Number of Monte Carlo simulations in THIS batch\n" + ...
-    "    for each experiment parameter: %i\n\n", (endGroup - startGroup + 1) * poolsize)
+    " for each experiment parameter: %i\n\n", (endGroup - startGroup + 1) * poolsize)
 fprintf("Group seed: %i\n\n", baseGroupSeed)
 fprintf("Overwrite: %i\n\n", overwrite)
 fprintf("File name: %s\n\n", fileName)
 
 % Check for directories
-for i_exp = 1:length(expsParams)
-    params = expsParams(i_exp);
-    folderPath = folderPathFunc(params, i_exp);
+for i_exp = 1:length(expParamsArray)
+    expParams = expParamsArray(i_exp);
+    folderPath = folderPathFunc(expParams, i_exp);
 
     % Create the directory if it does not exist
     if ~exist(folderPath,"dir")
@@ -89,27 +89,27 @@ end
 % to be able to save a part of the results as soon as possible
 for group = startGroup:endGroup
     % Run through all of the given experiment parameters
-    for i_exp = 1:length(expsParams)
-        params = expsParams(i_exp);
-        postfix = filePostfixFunc(params, i_exp) + "_" + MCGroupFilePostfix(group);
-        params.expTitle = postfix;
+    for i_exp = 1:length(expParamsArray)
+        expParams = expParamsArray(i_exp);
+        postfix = filePostfixFunc(expParams, i_exp) + "_" + MCGroupFilePostfix(group);
+        expParams.expTitle = postfix;
         
         if baseGroupSeed >= poolsize
             groupSeed = (group-1) * baseGroupSeed;
             % Run parallel simulations with groupSeed
-            [results, time] = MonteCarlo(params, poolsize, groupSeed);
+            [results, time] = MonteCarlo(expParams, poolsize, groupSeed);
         else
             % Run parallel simulations without groupSeed
-            [results, time] = MonteCarlo(params, poolsize);
+            [results, time] = MonteCarlo(expParams, poolsize);
         end
 
-        folderPath = folderPathFunc(params, i_exp);
+        folderPath = folderPathFunc(expParams, i_exp);
         filePath = MCFilePath(folderPath,fileName,postfix);
 
         if isfile(filePath) && (overwrite == false)
             fprintf("File on path \n%s \nalready exists, and overwriting is not allowed. Saving as 'DUPLICATE'.\n\n", filePath)
             filePath = MCFilePath(folderPath,"DUPLICATE_" + fileName,postfix);
         end
-        save(filePath, 'results', 'params', "time");
+        save(filePath, 'results', 'expParams', "time");
     end
 end

@@ -30,8 +30,8 @@ expsParams = struct( ...
         ...% No experiment title
     );
 
-folderPathFunc = @(params, i_exp) smallstepMCFolderPath(params.delayType, params.d, round(params.tau / params.dt));
-filePostfixFunc = @(params, i_exp) smallstepMCFilePostfix(params.delayType, params.d, round(params.tau / params.dt));
+folderPathFunc = @(expParams, i_exp) smallstepMCFolderPath(expParams.delayType, expParams.d, round(expParams.tau / expParams.dt));
+filePostfixFunc = @(expParams, i_exp) smallstepMCFilePostfix(expParams.delayType, expParams.d, round(expParams.tau / expParams.dt));
 
 function folderPath =  smallstepMCFolderPath(delayType, d, stepDelay)
     folderPath = sprintf("MonteCarlo/delayType%s/%iD/smallstep/stepDelay%i", delayType, d, stepDelay);

@@ -25,7 +25,7 @@ baseParams = struct( ...
         "stepCount", stepCount, ...% FIXED
         "dt", 1e-3, ...% FIXED
         "delayType", delayType, ...% FIXED
-        ...% VARIABLE step delay - will be set later to make multiple params
+        ...% VARIABLE step delay - will be set later to make multiple expParams
         ...% No initial history controll
         "waitForConf", false, ...% FIXED
         "stepPlotMod", -2, ...% FIXED
@@ -52,7 +52,7 @@ expsParams = struct( ...
         "thetaOccurMod", [] ...
     );
 
-% Set all base params
+% Set all base expParams
 for i = 1:length(stepDelays)
     expsParams(i) = baseParams;
 end
@@ -63,8 +63,8 @@ for i = 1:length(stepDelays)
     expsParams(i).stepDelay = stepDelay;
 end
 
-folderPathFunc = @(params,i_exp) MCFolderPath(params(i_exp).delayType, params(i_exp).d, params(i_exp).stepDelay);
-filePostfixFunc = @(params,i_exp) MCFilePostfix(params(i_exp).delayType, params(i_exp).d, params(i_exp).stepDelay);
+folderPathFunc = @(expParams,i_exp) MCFolderPath(expParams.delayType, expParams.d, expParams.stepDelay);
+filePostfixFunc = @(expParams,i_exp) MCFilePostfix(expParams.delayType, expParams.d, expParams.stepDelay);
 
 
 % rng('default')
@@ -120,14 +120,14 @@ filePostfixFunc = @(params,i_exp) MCFilePostfix(params(i_exp).delayType, params(
 %     for stepDelay = stepDelays
 %         postfix = MCFilePostfix(delayType,d,stepDelay,group,groupCount);
 % 
-%         params = baseParams;
-%         params.stepDelay = stepDelay; % VARIABLE step delay
-%         params.expTitle = postfix;
+%         expParams = baseParams;
+%         expParams.stepDelay = stepDelay; % VARIABLE step delay
+%         expParams.expTitle = postfix;
 % 
 %         if useBaseSeed
 %             baseSeed = stepDelay * 10^digitCountOfNMC + (group-1) * poolsize;
 %         end
-%         [results, time] = MonteCarlo(params, poolsize, baseSeed);
+%         [results, time] = MonteCarlo(expParams, poolsize, baseSeed);
 % 
 %         folderPath = MCFolderPath(delayType,d,stepDelay,true);
 %         path = MCFilePath(folderPath,fileName,postfix);
@@ -135,6 +135,6 @@ filePostfixFunc = @(params,i_exp) MCFilePostfix(params(i_exp).delayType, params(
 %             fprintf("File on path \n%s \nalready exists, and overwriting is not allowed. Saving as 'DUPLICATE'.\n\n", path)
 %             path = MCFilePath(folderPath,"DUPLICATE_" + fileName,postfix);
 %         end
-%         save(path, 'results', 'params', "poolsize", "time");
+%         save(path, 'results', 'expParams', "poolsize", "time");
 %     end
 % end

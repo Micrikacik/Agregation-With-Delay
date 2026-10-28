@@ -37,8 +37,8 @@ end
 %Save the matrix A
 fname = sprintf('A_%dx%d.mat',N,M);
 save(fname,'A');
-return
-clear A
+
+%clear A
 
 %Prepare the distance matrix
 distM = zeros(L,L);

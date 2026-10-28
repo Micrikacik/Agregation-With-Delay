@@ -4,15 +4,15 @@
 
 fileName = "MCData";
 
-[params, folderPathFunc, filePostfixFunc] = makeDelayExpsParams(2,0:30:420,"Reaction");
+[params, folderPathFunc, filePostfixFunc] = makeDelayExpsParams(1,0:30:420,"Reaction");
 
 totalSame = 0;
 
 for i_exp = 1:length(params)
     par = params(i_exp);
 
-    folderPath = folderPathFunc(params, i_exp);
-    postfix = filePostfixFunc(params, i_exp);
+    folderPath = folderPathFunc(par, i_exp);
+    postfix = filePostfixFunc(par, i_exp);
     
     path = MCFilePath(folderPath, fileName, postfix);
     results = load(path).results;

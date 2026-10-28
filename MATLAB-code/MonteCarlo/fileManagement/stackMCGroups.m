@@ -50,7 +50,11 @@ for i_exp = 1:count
         experiment = load(filePath);
 
         % Check if parameters between groups are the same
-        new_group_params = experiment.params;
+        if isfield(experiment,"expParams")
+            new_group_params = experiment.expParams;
+        else
+            new_group_params = experiment.params;
+        end
         new_group_params = rmfield(new_group_params, "expTitle");
         if ~isempty(group_params) && ~isequal(group_params, new_group_params)
             fprintf("There are different experiment parameters between groups!\n")
