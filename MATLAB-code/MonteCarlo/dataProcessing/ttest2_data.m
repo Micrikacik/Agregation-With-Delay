@@ -1,5 +1,7 @@
-[oC1,~,cC1,~,cS1] = processMCData(xData1);
-[oC2,~,cC2,~,cS2] = processMCData(xData2);
+function [h_oC,p_oC,h_cC,p_cC,h_cS,p_cS] = ttest2_data(xData1, xData2)
+
+[oC1,~,cC1,~,cS1] = processMCData(xData1, false);
+[oC2,~,cC2,~,cS2] = processMCData(xData2, false);
 
 [h_oC,p_oC] = ttest2(oC1, oC2, "Vartype", "unequal");
 [h_cC,p_cC] = ttest2(cC1, cC2, "Vartype", "unequal");
