@@ -1,9 +1,14 @@
-function [A, distM] = makeFPMatrices(gridDims, domainDims, stencil)
+function [A, distM] = makeFPMatrices(gridDims, boundConds, domainDims, stencil)
 
 arguments
     gridDims (1,:) double {mustBeInteger, mustBePositive}
-    domainDims (1,:) double {mustBePositive}
-    stencil double
+    boundConds (1,1) string = "Periodic"
+    domainDims (1,:) double {mustBePositive} = ones(size(gridDims))
+    stencil double = makeStencil(numel(gridDims), gridDims)
+end
+
+if boundConds ~= "Periodic"
+    error("Only periodic boundary conditions are currently supported.");
 end
 
 if isscalar(gridDims)

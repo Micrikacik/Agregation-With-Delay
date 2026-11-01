@@ -2,7 +2,7 @@ function [xRec, thetaRec, thetaOccur, xHist, rngSetts] = aggWithDelaySpeedup(exp
 
 % Runs the discrete simulation of agregation with a constant delay.
 %
-%---------------------------------------------------------------------------
+%--------------------------------------------------------------------------
 %
 % INPUT:
 %   expParams (structure) - struct, which can contain following fields, if an important
@@ -139,10 +139,9 @@ function [xRec, thetaRec, thetaOccur, xHist, rngSetts] = aggWithDelaySpeedup(exp
 %       continue in the experiment.
 
 
-%---------------------------------------------------------------------------
-%---------------------------------------------------------------------------
-%---------------------------------------------------------------------------
-
+%--------------------------------------------------------------------------
+%--------------------------------------------------------------------------
+%--------------------------------------------------------------------------
 
 fprintf("----------------------------------\n\n")
 
@@ -154,16 +153,20 @@ function result =  IsInteger(x)
     result = isnumeric(x) && all(x == floor(x));
 end
 
-% Set or initialize experiment parameters
+if nargin == 0
+    expParams = {};
+end
 
-%---------------------------------RNG---------------------------------------
+% Set or initialize experiment parameters ---------------------------------
+
+%---------------------------------RNG--------------------------------------
 
 % Random generator settings for continuation of experiment
 if ~isfield(expParams,"rngSetts") || ~isstruct(expParams.rngSetts)
     % We do not have all settings, so we check just the seed
     % Rng seed for replicable experiment
     if ~isfield(expParams,"rngSeed") || ~IsInteger(expParams.rngSeed) || expParams.rngSeed < 0 || ...
-            ~isequal(size(expParams.rngSeed),[1,1])
+            ~isscalar(expParams.rngSeed)
         fprintf("Either no or wrong value for the rng seed 'rngSeed'.\n")
         fprintf("Randomness is uncontrolled.\n\n")
     else
@@ -175,7 +178,7 @@ else
     fprintf("rngSetts accepted.\n\n")
 end
 
-%-----------------------SPACE-&-INITIAL-CONDITIONS------------------------
+%-----------------------SPACE-&-INITIAL-CONDITIONS-------------------------
 
 % Initial positions
 if ~isfield(expParams,"x0") || ~isfloat(expParams.x0) || isempty(expParams.x0)
@@ -183,7 +186,7 @@ if ~isfield(expParams,"x0") || ~isfloat(expParams.x0) || isempty(expParams.x0)
     fprintf("Looking for the input values for 'N' and 'd'.\n")
     fprintf('   |\n')
     if ~isfield(expParams,"N") || ~IsInteger(expParams.N) || expParams.N <= 0 || ...
-            ~isequal(size(expParams.N),[1,1])
+            ~isscalar(expParams.N)
         fprintf("   Either no or wrong value for the number of agents 'N'.\n")
         N = 400;                % default number of particles
         fprintf("   Setting N = %i.\n", N);
@@ -192,7 +195,7 @@ if ~isfield(expParams,"x0") || ~isfloat(expParams.x0) || isempty(expParams.x0)
         fprintf("   N = %i.\n", N)
     end
     if ~isfield(expParams,"d") || ~IsInteger(expParams.d) || expParams.d < 1 || ...
-            ~isequal(size(expParams.d),[1,1])
+            ~isscalar(expParams.d)
         fprintf("   Either no or wrong value for the dimension 'd'.\n")
         d = 2;                  % default dimension of the space
         fprintf("   Setting d = %i.\n", d);
@@ -228,7 +231,7 @@ if isempty(x)
     x = rand(N, d) .* (dims);
 end
 
-%----------------------------------MODEL------------------------------------
+%----------------------------------MODEL-----------------------------------
 
 % Interaction radius
 if ~isfield(expParams,"intRad") || ~isnumeric(expParams.intRad) || expParams.intRad < 0
@@ -245,7 +248,7 @@ intRadSqrd = intRad*intRad;             % Squared raduius for faster calculation
 
 % Boundary conditions
 if ~isfield(expParams,"boundConds") || ~isstring(expParams.boundConds) || ...
-        ~isequal(size(expParams.boundConds),[1,1])
+        ~isscalar(expParams.boundConds)
     fprintf("Either no or wrong value for the boundary conditions 'boundConds'.\n")
     boundConds = "Periodic";    % default boundary conditions
     fprintf("Setting boundary conditions to '%s'.\n\n", boundConds)
@@ -254,11 +257,11 @@ else
     fprintf("boundConds: '%s'.\n\n", boundConds)
 end
 
-%------------------------------TIME-&-DELAY---------------------------------
+%------------------------------TIME-&-DELAY--------------------------------
 
 % Time step length
 if ~isfield(expParams,"dt") || ~isfloat(expParams.dt) || expParams.dt <= 0 || ...
-        ~isequal(size(expParams.dt),[1,1])
+        ~isscalar(expParams.dt)
     fprintf("Either no or wrong value for the time step length 'dt'.\n")
     dt = 1e-3;                  % default time step length
     fprintf("Setting dt = %.3d\n\n", dt)
@@ -269,9 +272,9 @@ end
 
 % Step count
 if ~isfield(expParams,"stepCount") || ~IsInteger(expParams.stepCount) || expParams.stepCount < 0 || ...
-        ~isequal(size(expParams.stepCount),[1,1])
+        ~isscalar(expParams.stepCount)
     if ~isfield(expParams,"T") || ~isfloat(expParams.T) || expParams.T <= 0 || ...
-        ~isequal(size(expParams.T), [1,1])
+        ~isscalar(expParams.T)
         fprintf("Either no or wrong value for both the number of time steps 'stepCount'" + ...
             " and the total simulation time 'T'.\n")
         stepCount = 1000;                    % default number of time steps
@@ -288,7 +291,7 @@ end
 
 % Delay type
 if ~isfield(expParams,"delayType") || ~isstring(expParams.delayType) || ...
-        ~isequal(size(expParams.delayType),[1,1])
+        ~isscalar(expParams.delayType)
     fprintf("Either no or wrong value for the delay type 'delayType'.\n")
     delayType = "Reaction";     % default delay type
     fprintf("Setting delay type to '%s'.\n\n", delayType)
@@ -300,9 +303,9 @@ end
 % Step delay
 if delayType ~= "None"
     if ~isfield(expParams,"stepDelay") || ~IsInteger(expParams.stepDelay) || expParams.stepDelay < 0 || ...
-            ~isequal(size(expParams.stepDelay),[1,1])
+            ~isscalar(expParams.stepDelay)
         if ~isfield(expParams,"tau") || ~isfloat(expParams.tau) || expParams.tau < 0 || ...
-            ~isequal(size(expParams.tau),[1,1])
+            ~isscalar(expParams.tau)
             fprintf("Either no or wrong value for both the step delay 'stepDelay'" + ...
                 " and the delay 'tau'.\n")
             stepDelay = 5;                    % default number of time steps
@@ -330,7 +333,7 @@ end
 % Initial history of positions
 if delayType ~= "None"
     if ~isfield(expParams,"xInitHist") || ~isfloat(expParams.xInitHist) || ...
-            ~isequal(size(expParams.xInitHist),[N,d,stepDelay])
+            ~isequal(size(expParams.xInitHist), [N,d,stepDelay])
         fprintf("Either no or wrong value for the matrix of initial history of positions 'xInitHist'.\n")
         xHist = genInitHist(x, dt, stepDelay, boundConds, dims);  % default initial history
         fprintf("Initializing experiment with 'blind motion' initial history.\n\n")
@@ -343,12 +346,12 @@ else
     fprintf("No initial history, since there is no delay.\n\n")
 end
 
-%----------------------------------USER-------------------------------------
+%----------------------------------USER------------------------------------
 
 % Step plot mod
 if ~isfield(expParams,"stepPlotMod") || ~IsInteger(expParams.stepPlotMod) || ...
         ((expParams.stepPlotMod <= 0) && expParams.stepPlotMod ~= -1 && expParams.stepPlotMod ~= -2) || ...
-        ~isequal(size(expParams.stepPlotMod),[1,1])
+        ~isscalar(expParams.stepPlotMod)
     fprintf("Either no or wrong value for the step plot mod 'stepPlotMod'.\n")
     stepPlotMod = 5;  % default step plot mod
     fprintf("Setting step plot mod to %i.\n\n", stepPlotMod)
@@ -359,8 +362,8 @@ end
 
 if stepPlotMod > 0
     % Marked agents indeces
-    if ~isfield(expParams,"markAgents") || ~IsInteger(expParams.markAgents) || any(expParams.markAgents <= 0) || ...
-            ~isequal(size(expParams.markAgents),[size(expParams.markAgents,1),1])
+    if ~isfield(expParams,"markAgents") || ~IsInteger(expParams.markAgents) || ...
+            any(expParams.markAgents <= 0) || ~iscolumn(expParams.markAgents)
         fprintf("Either no or wrong value for the marked agents indeces 'markAgents'.\n")
         markAgents = [];  % default marks
         fprintf("None of the agents will be marked.\n\n")
@@ -373,7 +376,7 @@ if stepPlotMod > 0
     % Marked agents colors
     if ~isfield(expParams,"markColors") || ~isfloat(expParams.markColors) || ...
             any(expParams.markColors < 0) || any(expParams.markColors > 1) || ...
-            ~isequal(size(expParams.markColors), [length(markAgents),3])
+            ~isequal(size(expParams.markColors), [length(markAgents), 3])
         fprintf("Either no or wrong value for the marked agents colors 'markAgents'.\n")
         markColors = repmat([1,0,0],[length(markAgents),1]);
         fprintf("Setting marked agents colors to red.\n\n")
@@ -389,7 +392,7 @@ end
 % Step record mod
 if ~isfield(expParams,"stepRecMod") || ~IsInteger(expParams.stepRecMod) || ... 
         (expParams.stepRecMod <= 0 && expParams.stepRecMod ~= -1) || ...
-        ~isequal(size(expParams.stepRecMod),[1,1])
+        ~isscalar(expParams.stepRecMod)
     fprintf("Either no or wrong value for the step record mod 'stepRecMod'.\n")
     stepRecMod = -1;  % default step record mod
     fprintf("Setting step record mod to %i.\n\n", stepRecMod)
@@ -401,7 +404,7 @@ end
 % Theta record mod
 if ~isfield(expParams,"thetaRecMod") || ~IsInteger(expParams.thetaRecMod) || ... 
         (expParams.thetaRecMod <= 0 && expParams.thetaRecMod ~= -1) || ...
-        ~isequal(size(expParams.thetaRecMod),[1,1])
+        ~isscalar(expParams.thetaRecMod)
     fprintf("Either no or wrong value for the theta record mod 'thetaRecMod'.\n")
     thetaRecMod = stepRecMod;  % default theta record mod
     fprintf("Setting theta record mod to %i.\n\n", thetaRecMod)
@@ -413,7 +416,7 @@ end
 % Theta occurance mod
 if ~isfield(expParams,"thetaOccurMod") || ~IsInteger(expParams.thetaOccurMod) || ... 
         (expParams.thetaOccurMod <= 0 && expParams.thetaOccurMod ~= -1) || ...
-        ~isequal(size(expParams.thetaOccurMod),[1,1])
+        ~isscalar(expParams.thetaOccurMod)
     fprintf("Either no or wrong value for the theta occurance mod 'thetaOccurMod'.\n")
     thetaOccurMod = thetaRecMod;  % default theta record mod
     fprintf("Setting theta occurance mod to %i.\n\n", thetaOccurMod)
@@ -423,12 +426,12 @@ else
 end
 
 
-%---------------------------------------------------------------------------
-%---------------------------------------------------------------------------
-%---------------------------------------------------------------------------
+%--------------------------------------------------------------------------
+%--------------------------------------------------------------------------
+%--------------------------------------------------------------------------
 
 
-% Set auxiliary variables
+% Set auxiliary variables -------------------------------------------------
 
 % Coefficient to access history
 histCoeff = stepDelay;
@@ -459,7 +462,8 @@ if stepPlotMod > 0
     plotSimStep(theta)
 end
 
-% Set output variables
+
+% Set output variables ----------------------------------------------------
 
 % Auxiliary function to determine the count of to be recorded steps
 function count = getRecCount(module)
@@ -516,6 +520,9 @@ if thetaOccurMod ~= -1
     thetaOccur = accumarray(indexes, 1, size(thetaOccur));
 end
 
+
+% Decide on & prepare memorization ----------------------------------------
+
 memorizable = (delayType == "Reaction");
 % If the delayType is 'Reaction', we can save some calculations
 % on recording theta and incrementing thetaOccur
@@ -530,6 +537,11 @@ if memorizable
 end
 
 
+%---------------------------------------------------------------------------
+%---------------------------------------------------------------------------
+%---------------------------------------------------------------------------
+
+
 if ~isfield(expParams, "waitForConf") || expParams.waitForConf == true
     fprintf("----------------------------------\n\n")
     fprintf("Press any key to start the simulation.\n\n")
@@ -539,18 +551,13 @@ end
 
 fprintf("----------------------------------\n\n")
 fprintf("Starting the simulation")
-if isfield(expParams, "expTitle") && isstring(expParams.expTitle) && isequal(size(expParams.expTitle),[1,1])
-    fprintf(", title: %s", expParams.expTitle)
-end
+printTitle()
 fprintf(".\n\n")
 
 
-%---------------------------------------------------------------------------
-%---------------------------------------------------------------------------
-%---------------------------------------------------------------------------
+% Simulate for t = 1:stepCount --------------------------------------------
+% This loop calculates the step t from the step t-1 -----------------------
 
-
-% Simulate for t=1:stepCount, this loop calculates the  step t from the step t-1
 for t = 1:stepCount
     % Interaction counts:
     % Vector, where i-th element is the count of agents 
@@ -755,9 +762,7 @@ rngSetts = rng;
 
 fprintf("----------------------------------\n\n")
 fprintf("Simulation")
-if isfield(expParams,"expTitle") && isstring(expParams.expTitle) && isequal(size(expParams.expTitle),[1,1])
-    fprintf(" titled %s", expParams.expTitle)
-end
+printTitle()
 fprintf(" finished.\n\n")
 
 if stepPlotMod ~= -2
@@ -769,5 +774,12 @@ if stepPlotMod ~= -2
     fprintf("Plotting agregation groups.\n\n")
     plotAgg(x, theta * W_norm / volume, dims, boundConds)
 end
+
+function printTitle()
+    if isfield(expParams,"expTitle") && isstring(expParams.expTitle) && isscalar(expParams.expTitle)
+    fprintf(" titled %s", expParams.expTitle)
+    end
+end
+        
 
 end

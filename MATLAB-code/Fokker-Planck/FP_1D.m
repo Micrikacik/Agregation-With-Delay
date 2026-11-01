@@ -36,11 +36,11 @@ A=zeros(Nx,Nx);
 
 
 % Initial condition for rho
-fluctuations = makeFluctuations(maxInitFluc, Nx, d);
+fluctuations = makeFluctuations(maxInitFluc, Nx);
 rho = 1 + fluctuations;
 
 rhoBuf = zeros(tau,Nx);
-rhoInit = genRhoInitHist(maxInitFluc, Nx, tau, L, d);
+rhoInit = genRhoInitHist(maxInitFluc, Nx, tau, L);
 for t=1:tau
     rhoBuf(t,:) = rhoInit(:,t).';
 end

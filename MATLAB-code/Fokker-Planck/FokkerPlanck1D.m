@@ -169,8 +169,8 @@ end
 
 % Setting random initial density
 if isempty(rho)
-    fluctuations = makeFluctuations(maxInitFluc, gridPointCount, d);
-    rho = 1 + fluctuations;
+    fluctuations = makeFluctuations(maxInitFluc, gridPointCount);
+    rho = 1 / L + fluctuations; % it is density, so integral must be 1
 end
 
 %----------------------------------MODEL------------------------------------
@@ -261,7 +261,7 @@ end
 if ~isfield(expParams,"rhoInitHist") || ~isfloat(expParams.rhoInitHist) || ...
         ~isequal(size(expParams.rhoInitHist), [gridPointCount,stepDelay])
     fprintf("Either no or wrong value for the matrix of initial densities 'rhoInitHist'.\n")
-    rhoHist = genRhoInitHist(maxInitFluc, gridPointCount, stepDelay, L, d);  % default initial history
+    rhoHist = genRhoInitHist(maxInitFluc, rho, stepDelay);  % default initial history
     fprintf("Initializing experiment with random initial density history.\n\n")
 else
     rhoHist = expParams.rhoInitHist;

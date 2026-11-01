@@ -56,6 +56,8 @@ if  isempty(endGroup)
     groupCount = ceil((100 - poolsize * (startGroup - 1)) / poolsize);
     % If groupCount==1, then we must have startGroup==endGroup
     endGroup = startGroup + groupCount - 1;
+else
+    groupCount = endGroup + 1 - startGroup;
 end
 
 fprintf("Experiment parameters (values will be displayed when simulations start):\n")
@@ -64,12 +66,12 @@ fprintf("Folder path function:\n")
 disp(folderPathFunc)
 fprintf("File postfix function:\n")
 disp(filePostfixFunc)
-fprintf("Group count: %i\n\n", groupCount)
-fprintf("Pool size: %i\n\n", poolsize)
 fprintf("Start group: %i\n\n", startGroup)
 fprintf("End group: %i\n\n", endGroup)
-fprintf("Number of Monte Carlo simulations in THIS batch\n" + ...
-    " for each experiment parameter: %i\n\n", (endGroup - startGroup + 1) * poolsize)
+fprintf("Group count: %i\n\n", groupCount)
+fprintf("Pool size: %i\n\n", poolsize)
+fprintf("Number of Monte Carlo simulations in THIS batch for each experiment parameter: %i\n\n", ...
+    (endGroup - startGroup + 1) * poolsize)
 fprintf("Group seed: %i\n\n", baseGroupSeed)
 fprintf("Overwrite: %i\n\n", overwrite)
 fprintf("File name: %s\n\n", fileName)

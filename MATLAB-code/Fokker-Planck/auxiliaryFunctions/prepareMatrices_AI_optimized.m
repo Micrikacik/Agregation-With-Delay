@@ -1,4 +1,7 @@
-function [A, distM] = prepareMatrices_optimized(gridDims, domainDims, stencil)
+function [A, distM] = prepareMatrices_AI_optimized(gridDims, domainDims, stencil)
+%
+% THIS FUNCTION WAS MADE BY OPTIMIZING AUTHORS FUNCTION BY AI TO BE FASTER
+%
 %PREPAREMATRICES_OPTIMIZED Faster equivalent of prepareMatrices.
 % MATLAB R2025b. Uses sparse triplet assembly for A and pairwise
 % periodic coordinate differences for distM.

@@ -4,7 +4,7 @@
 
 fileName = "MCData";
 
-[params, folderPathFunc, filePostfixFunc] = makeDelayExpsParams(1,0:30:420,"Reaction");
+[params, folderPathFunc, filePostfixFunc] = makeDelayExpsParams(2,0:30:90,"Reaction");
 
 totalSame = 0;
 

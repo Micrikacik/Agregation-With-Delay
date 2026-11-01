@@ -83,7 +83,7 @@ for t=1:T
     if(~mod(t-1,WhichPlot))
         
         subplot(1,2,1);
-        pcolor(reshape(rhodelay,N,M)); shading interp;
+        imagesc(reshape(rhodelay,N,M)); shading interp;
         clim([0 2]);
         colorbar;
         
