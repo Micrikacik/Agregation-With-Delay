@@ -19,7 +19,7 @@ function xInitHist = genInitHist(x, dt, stepDelay, boundConds, dims)
 %       dimension of the matrix 'x'.
 
 arguments
-    x (:,:) double {mustBePositive}
+    x (:,:) double
     dt (1,1) double {mustBePositive}
     stepDelay (1,1) double {mustBePositive, mustBeInteger}
     boundConds (1,1) string

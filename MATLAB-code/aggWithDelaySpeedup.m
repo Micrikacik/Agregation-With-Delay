@@ -67,7 +67,7 @@ function [xRec, thetaRec, thetaOccur, xHist, rngSetts] = aggWithDelaySpeedup(exp
 %           If stepPlotMod = -2, then no steps are plotted.
 %       markAgents (positive integer vector) - vector containing indeces
 %           of the agents to be marked. See 'markColor' for mark color.
-%       markColor (nonegative float matrix) - matrix with 3 columns of the
+%       markColors (nonegative float matrix) - matrix with 3 columns of the
 %           same size as 'markAgents'. In each row must be an eligible RGB
 %           triplet, which indicates what color to mark the agent with 
 %           (specified by 'markAgents' index in the same row).
@@ -98,7 +98,7 @@ function [xRec, thetaRec, thetaOccur, xHist, rngSetts] = aggWithDelaySpeedup(exp
 %           If no value is specified, then the value of 'thetaRecMod' is
 %           used instead.
 %       expTitle (string) - title to be printed before the experiment begins
-%       recordVideoPath (string) - if provided, script records the plotted
+%       videoPath (string) - if provided, script records the plotted
 %           positions as video onto this given path. This path should
 %           include the filename, but NOT the file extension. It will be
 %           saved as '.avi'.
@@ -138,6 +138,9 @@ function [xRec, thetaRec, thetaOccur, xHist, rngSetts] = aggWithDelaySpeedup(exp
 %       It can be directly plugged in as an input to this function to 
 %       continue in the experiment.
 
+arguments
+    expParams (1,1) struct = struct()
+end
 
 %--------------------------------------------------------------------------
 %--------------------------------------------------------------------------
@@ -153,10 +156,6 @@ function result =  IsInteger(x)
     result = isnumeric(x) && all(x == floor(x));
 end
 
-if nargin == 0
-    expParams = {};
-end
-
 % Set or initialize experiment parameters ---------------------------------
 
 %---------------------------------RNG--------------------------------------
@@ -167,11 +166,11 @@ if ~isfield(expParams,"rngSetts") || ~isstruct(expParams.rngSetts)
     % Rng seed for replicable experiment
     if ~isfield(expParams,"rngSeed") || ~IsInteger(expParams.rngSeed) || expParams.rngSeed < 0 || ...
             ~isscalar(expParams.rngSeed)
-        fprintf("Either no or wrong value for the rng seed 'rngSeed'.\n")
+        fprintf("rngSeed - Either no or wrong value for the rng seed.\n")
         fprintf("Randomness is uncontrolled.\n\n")
     else
         rng(expParams.rngSeed)
-        fprintf("rngSeed: %i.\n\n", expParams.rngSeed)
+        fprintf("rngSeed = %i.\n\n", expParams.rngSeed)
     end
 else
     rng(expParams.rngSetts)
@@ -182,12 +181,12 @@ end
 
 % Initial positions
 if ~isfield(expParams,"x0") || ~isfloat(expParams.x0) || isempty(expParams.x0)
-    fprintf("Either no or wrong value for the matrix of initial positions 'x0'.\n")
+    fprintf("x0 - Either no or wrong value for the matrix of initial positions.\n")
     fprintf("Looking for the input values for 'N' and 'd'.\n")
     fprintf('   |\n')
     if ~isfield(expParams,"N") || ~IsInteger(expParams.N) || expParams.N <= 0 || ...
             ~isscalar(expParams.N)
-        fprintf("   Either no or wrong value for the number of agents 'N'.\n")
+        fprintf("   N - Either no or wrong value for the number of agents.\n")
         N = 400;                % default number of particles
         fprintf("   Setting N = %i.\n", N);
     else
@@ -196,7 +195,7 @@ if ~isfield(expParams,"x0") || ~isfloat(expParams.x0) || isempty(expParams.x0)
     end
     if ~isfield(expParams,"d") || ~IsInteger(expParams.d) || expParams.d < 1 || ...
             ~isscalar(expParams.d)
-        fprintf("   Either no or wrong value for the dimension 'd'.\n")
+        fprintf("   d - Either no or wrong value for the dimension.\n")
         d = 2;                  % default dimension of the space
         fprintf("   Setting d = %i.\n", d);
     else
@@ -214,11 +213,12 @@ else
 end
 
 % Dimensions
-if ~isfield(expParams,"dims") || ~isfloat(expParams.dims) || any(expParams.dims <= 0) || ...
+if ~isfield(expParams, "dims") || ~isfloat(expParams.dims) || any(expParams.dims <= 0) || ...
         ~isequal(size(expParams.dims),[1,d])
-    fprintf("Either no or wrong value for the vector of dimensions 'dims'.\n")
+    fprintf("dims - Either no or wrong value for the vector of dimensions.\n")
     dims = ones(1,d);           % default dimensions
-    fprintf("Setting all dimensions to 1.\n\n")
+    fprintf("Setting dims:")
+    disp(dims)
 else 
     dims = expParams.dims;
     fprintf("dims:")
@@ -234,8 +234,8 @@ end
 %----------------------------------MODEL-----------------------------------
 
 % Interaction radius
-if ~isfield(expParams,"intRad") || ~isnumeric(expParams.intRad) || expParams.intRad < 0
-    fprintf("Either no or wrong value for the interaction radius 'intRad'.\n")
+if ~isfield(expParams, "intRad") || ~isnumeric(expParams.intRad) || expParams.intRad < 0
+    fprintf("intRad - Either no or wrong value for the interaction radius.\n")
     intRad = getIntRad(d);
     fprintf("Setting intRad = %.3d\n\n", intRad)
 else
@@ -247,11 +247,11 @@ W_norm = kappa * intRad^d;              % W_norm to normalize W (done after the 
 intRadSqrd = intRad*intRad;             % Squared raduius for faster calculations
 
 % Boundary conditions
-if ~isfield(expParams,"boundConds") || ~isstring(expParams.boundConds) || ...
+if ~isfield(expParams, "boundConds") || ~isstring(expParams.boundConds) || ...
         ~isscalar(expParams.boundConds)
-    fprintf("Either no or wrong value for the boundary conditions 'boundConds'.\n")
+    fprintf("boundConds - Either no or wrong value for the boundary conditions.\n")
     boundConds = "Periodic";    % default boundary conditions
-    fprintf("Setting boundary conditions to '%s'.\n\n", boundConds)
+    fprintf("Setting boundConds = '%s'.\n\n", boundConds)
 else
     boundConds = expParams.boundConds;
     fprintf("boundConds: '%s'.\n\n", boundConds)
@@ -260,9 +260,9 @@ end
 %------------------------------TIME-&-DELAY--------------------------------
 
 % Time step length
-if ~isfield(expParams,"dt") || ~isfloat(expParams.dt) || expParams.dt <= 0 || ...
+if ~isfield(expParams, "dt") || ~isfloat(expParams.dt) || expParams.dt <= 0 || ...
         ~isscalar(expParams.dt)
-    fprintf("Either no or wrong value for the time step length 'dt'.\n")
+    fprintf("dt - Either no or wrong value for the time step length.\n")
     dt = 1e-3;                  % default time step length
     fprintf("Setting dt = %.3d\n\n", dt)
 else
@@ -271,12 +271,12 @@ else
 end
 
 % Step count
-if ~isfield(expParams,"stepCount") || ~IsInteger(expParams.stepCount) || expParams.stepCount < 0 || ...
+if ~isfield(expParams, "stepCount") || ~IsInteger(expParams.stepCount) || expParams.stepCount < 0 || ...
         ~isscalar(expParams.stepCount)
     if ~isfield(expParams,"T") || ~isfloat(expParams.T) || expParams.T <= 0 || ...
         ~isscalar(expParams.T)
-        fprintf("Either no or wrong value for both the number of time steps 'stepCount'" + ...
-            " and the total simulation time 'T'.\n")
+        fprintf("stepCount (T) - Either no or wrong value for both the number of time steps" + ...
+            " and the total simulation time.\n")
         stepCount = 1000;                    % default number of time steps
         fprintf("Setting stepCount = %i (T = %.3d).\n\n", stepCount, stepCount * dt)
     else
@@ -289,61 +289,66 @@ else
     fprintf("stepCount = %i (T = %.3d).\n\n", stepCount, stepCount * dt)
 end
 
-% Delay type
-if ~isfield(expParams,"delayType") || ~isstring(expParams.delayType) || ...
-        ~isscalar(expParams.delayType)
-    fprintf("Either no or wrong value for the delay type 'delayType'.\n")
-    delayType = "Reaction";     % default delay type
-    fprintf("Setting delay type to '%s'.\n\n", delayType)
+% Initial history of positions
+if ~isfield(expParams, "xInitHist") || ~isfloat(expParams.xInitHist) || ...
+        size(expParams.xInitHist, 1) ~= N || size(expParams.xInitHist, 2) ~= d || ...
+        (isempty(expParams.xInitHist) && ndims(expParams.xInitHist) ~= 3) % check that it is empty only when it is 3d = no delay defined => can accept
+    fprintf("xInitHist - Either no or wrong value for the matrix of initial history of positions.\n")
+    xHist = [];  % default initial history will be made after stepDelay
+    fprintf("Initializing experiment with 'blind motion' initial history.\n\n")
 else
-    delayType = expParams.delayType;
-    fprintf("delayType: '%s'.\n\n", delayType)
+    xHist = expParams.xInitHist;
+    fprintf("xInitHist accepted.\n\n")
 end
 
 % Step delay
-if delayType ~= "None"
-    if ~isfield(expParams,"stepDelay") || ~IsInteger(expParams.stepDelay) || expParams.stepDelay < 0 || ...
-            ~isscalar(expParams.stepDelay)
-        if ~isfield(expParams,"tau") || ~isfloat(expParams.tau) || expParams.tau < 0 || ...
-            ~isscalar(expParams.tau)
-            fprintf("Either no or wrong value for both the step delay 'stepDelay'" + ...
-                " and the delay 'tau'.\n")
-            stepDelay = 5;                    % default number of time steps
+if isempty(xHist) && ndims(xHist) ~= 3
+
+    if ~isfield(expParams, "stepDelay") || ~IsInteger(expParams.stepDelay) || ...
+            expParams.stepDelay < 0 || ~isscalar(expParams.stepDelay)
+
+        if ~isfield(expParams, "tau") || ~isfloat(expParams.tau) || ...
+                expParams.tau < 0 || ~isscalar(expParams.tau)
+            fprintf("stepDelay (tau) - Either no or wrong value for both the step delay" + ...
+                " and the delay.\n")
+            stepDelay = 100;                    % default stepDelay
             fprintf("Setting stepDelay = %i (tau = %.3d).\n\n", stepDelay, stepDelay * dt)
         else
             stepDelay = round(expParams.tau / dt);
             tau = stepDelay * dt;
             fprintf("tau = %.3d (stepDelay = %i).\n\n", tau, stepDelay)
         end
+
     else
         stepDelay = expParams.stepDelay;
         fprintf("stepDelay: %i (tau = %.3d).\n\n", stepDelay, stepDelay * dt)
     end
+
 else
-    stepDelay = 0;
-    fprintf("Delay type 'None' detected. Forcing delay to be 0.\n\n")
+    stepDelay = size(xHist, 3);
+    fprintf("Inferring step delay from 'xInitHist', stepDelay = %i (tau = %.3d).\n\n", ...
+        stepDelay, stepDelay * dt)
 end
 
-% Forcing no delay
-if stepDelay == 0 && delayType ~= "None"
-    fprintf("Zero step delay detected. Forcing delay type to be 'None'.\n\n")
-    delayType = "None";
+% Make default xInihHist
+if isempty(xHist) && stepDelay > 0
+    xHist = genInitHist(x, dt, stepDelay, boundConds, dims);
 end
 
-% Initial history of positions
-if delayType ~= "None"
-    if ~isfield(expParams,"xInitHist") || ~isfloat(expParams.xInitHist) || ...
-            ~isequal(size(expParams.xInitHist), [N,d,stepDelay])
-        fprintf("Either no or wrong value for the matrix of initial history of positions 'xInitHist'.\n")
-        xHist = genInitHist(x, dt, stepDelay, boundConds, dims);  % default initial history
-        fprintf("Initializing experiment with 'blind motion' initial history.\n\n")
+% Delay type
+if stepDelay ~= 0
+    if ~isfield(expParams, "delayType") || ~isstring(expParams.delayType) || ...
+            ~isscalar(expParams.delayType)
+        fprintf("delayType - Either no or wrong value for the delay type.\n")
+        delayType = "Reaction";     % default delay type
+        fprintf("Setting delayType = '%s'.\n\n", delayType)
     else
-        xHist = expParams.xInitHist;
-        fprintf("xInitHist accepted.\n\n")
+        delayType = expParams.delayType;
+        fprintf("delayType = '%s'.\n\n", delayType)
     end
 else
-    xHist = []; % No delay, no history
-    fprintf("No initial history, since there is no delay.\n\n")
+    delayType = "None";
+    fprintf("Zero step delay detected. Forcing delayType = %s.\n\n", delayType)
 end
 
 %----------------------------------USER------------------------------------
@@ -352,9 +357,9 @@ end
 if ~isfield(expParams,"stepPlotMod") || ~IsInteger(expParams.stepPlotMod) || ...
         ((expParams.stepPlotMod <= 0) && expParams.stepPlotMod ~= -1 && expParams.stepPlotMod ~= -2) || ...
         ~isscalar(expParams.stepPlotMod)
-    fprintf("Either no or wrong value for the step plot mod 'stepPlotMod'.\n")
+    fprintf("stepPlotMod - Either no or wrong value for the step plot mod.\n")
     stepPlotMod = 5;  % default step plot mod
-    fprintf("Setting step plot mod to %i.\n\n", stepPlotMod)
+    fprintf("Setting stepPlotMod = %i.\n\n", stepPlotMod)
 else
     stepPlotMod = expParams.stepPlotMod;
     fprintf("stepPlotMod: %i.\n\n", stepPlotMod)
@@ -364,7 +369,7 @@ if stepPlotMod > 0
     % Marked agents indeces
     if ~isfield(expParams,"markAgents") || ~IsInteger(expParams.markAgents) || ...
             any(expParams.markAgents <= 0) || ~iscolumn(expParams.markAgents)
-        fprintf("Either no or wrong value for the marked agents indeces 'markAgents'.\n")
+        fprintf("markAgents - Either no or wrong value for the marked agents indeces.\n")
         markAgents = [];  % default marks
         fprintf("None of the agents will be marked.\n\n")
     else
@@ -377,9 +382,9 @@ if stepPlotMod > 0
     if ~isfield(expParams,"markColors") || ~isfloat(expParams.markColors) || ...
             any(expParams.markColors < 0) || any(expParams.markColors > 1) || ...
             ~isequal(size(expParams.markColors), [length(markAgents), 3])
-        fprintf("Either no or wrong value for the marked agents colors 'markAgents'.\n")
+        fprintf("markAgents - Either no or wrong value for the marked agents colors.\n")
         markColors = repmat([1,0,0],[length(markAgents),1]);
-        fprintf("Setting marked agents colors to red.\n\n")
+        fprintf("Setting all marked agents colors to red.\n\n")
     else
         markColors = expParams.markColors;
         fprintf("markColors accepted.\n\n")
@@ -393,9 +398,9 @@ end
 if ~isfield(expParams,"stepRecMod") || ~IsInteger(expParams.stepRecMod) || ... 
         (expParams.stepRecMod <= 0 && expParams.stepRecMod ~= -1) || ...
         ~isscalar(expParams.stepRecMod)
-    fprintf("Either no or wrong value for the step record mod 'stepRecMod'.\n")
+    fprintf("stepRecMod - Either no or wrong value for the step record mod.\n")
     stepRecMod = -1;  % default step record mod
-    fprintf("Setting step record mod to %i.\n\n", stepRecMod)
+    fprintf("Setting stepRecMod = %i.\n\n", stepRecMod)
 else
     stepRecMod = expParams.stepRecMod;
     fprintf("stepRecMod: %i.\n\n", stepRecMod)
@@ -405,21 +410,21 @@ end
 if ~isfield(expParams,"thetaRecMod") || ~IsInteger(expParams.thetaRecMod) || ... 
         (expParams.thetaRecMod <= 0 && expParams.thetaRecMod ~= -1) || ...
         ~isscalar(expParams.thetaRecMod)
-    fprintf("Either no or wrong value for the theta record mod 'thetaRecMod'.\n")
+    fprintf("thetaRecMod - Either no or wrong value for the theta record mod.\n")
     thetaRecMod = stepRecMod;  % default theta record mod
-    fprintf("Setting theta record mod to %i.\n\n", thetaRecMod)
+    fprintf("Setting thetaRecMod = %i.\n\n", thetaRecMod)
 else
     thetaRecMod = expParams.thetaRecMod;
     fprintf("thetaRecMod: %i.\n\n", thetaRecMod)
 end
 
 % Theta occurance mod
-if ~isfield(expParams,"thetaOccurMod") || ~IsInteger(expParams.thetaOccurMod) || ... 
+if ~isfield(expParams, "thetaOccurMod") || ~IsInteger(expParams.thetaOccurMod) || ... 
         (expParams.thetaOccurMod <= 0 && expParams.thetaOccurMod ~= -1) || ...
         ~isscalar(expParams.thetaOccurMod)
-    fprintf("Either no or wrong value for the theta occurance mod 'thetaOccurMod'.\n")
+    fprintf("thetaOccurMod - Either no or wrong value for the theta occurance mod.\n")
     thetaOccurMod = thetaRecMod;  % default theta record mod
-    fprintf("Setting theta occurance mod to %i.\n\n", thetaOccurMod)
+    fprintf("Setting thetaOccurMod = %i.\n\n", thetaOccurMod)
 else
     thetaOccurMod = expParams.thetaOccurMod;
     fprintf("thetaOccurMod: %i.\n\n", thetaOccurMod)
@@ -444,10 +449,10 @@ end
 
 % Setup VideoWriter if the simulation is recorded
 recordVideo = false;
-if isfield(expParams,"recordVideoPath") && isstring(expParams.recordVideoPath)
-    fprintf("Making the video of the plot at %s.\n\n", expParams.recordVideoPath)
+if isfield(expParams, "videoPath") && isstring(expParams.videoPath)
+    fprintf("Making the video of the plot at %s.\n\n", expParams.videoPath)
     recordVideo = true;
-    vidWrit = VideoWriter(sprintf("%s.avi",expParams.recordVideoPath));
+    vidWrit = VideoWriter(sprintf("%s.avi",expParams.videoPath));
     frameTime = stepPlotMod * dt;
     vidWrit.FrameRate = 1 / frameTime;
     open(vidWrit)
@@ -482,7 +487,7 @@ end
 xRecCount = getRecCount(stepRecMod);
 
 % Setup to record initial step
-if isfield(expParams,"recInitStep") && expParams.recInitStep == true
+if isfield(expParams, "recInitStep") && expParams.recInitStep == true
     fprintf("Recording initial step.\n\n")
     xRec = zeros([N,d,xRecCount + 1]);
     xRec(:,:,1) = x;
@@ -496,7 +501,7 @@ end
 thetaRecCount = getRecCount(thetaRecMod);
 
 % Setup to record initial theta
-if (isfield(expParams,"recInitTheta") && expParams.recInitTheta == true) || ...
+if (isfield(expParams, "recInitTheta") && expParams.recInitTheta == true) || ...
         isfield(expParams,"recInitStep") && expParams.recInitStep == true
     fprintf("Recording initial theta.\n\n")
     thetaRec = zeros([N, 2, thetaRecCount + 1]);
