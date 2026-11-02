@@ -169,7 +169,7 @@ end
 
 % Setting random initial density
 if isempty(rho)
-    fluctuations = makeFluctuations(maxInitFluc, gridPointCount);
+    fluctuations = makeFlucts(maxInitFluc, gridPointCount);
     rho = 1 / L + fluctuations; % it is density, so integral must be 1
 end
 

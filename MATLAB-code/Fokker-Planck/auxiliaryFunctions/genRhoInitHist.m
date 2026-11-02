@@ -1,19 +1,15 @@
-function [rhoInitHist] = genRhoInitHist(maxFluc, rho0, stepDelay)
+function [rhoInitHist] = genRhoInitHist(maxFlucts, rho0, stepDelay)
 
 % maxFluc - maximal fluctuations added in one step
 % rho0 - vectorized density
 % stepDelay - step delay
 
-V = numel(rho0);
+N = numel(rho0);
 
-rhoInitHist = zeros(V, stepDelay);
+rhoInitHist = zeros(N, stepDelay);
 
-tempFluc = makeFluctuations(maxFluc, V);
-tempRho = rho0 + tempFluc;
-rhoInitHist(:,1) = tempRho;
-
-for t=2:stepDelay
-    tempFluc = makeFluctuations(maxFluc, V);
-    tempRho = rhoInitHist(:,t-1) + tempFluc;
+for t=1:stepDelay
+    tempFluc = makeFlucts(maxFlucts, N);
+    tempRho = rho0 + tempFluc;
     rhoInitHist(:,t) = tempRho;
 end

@@ -1,4 +1,4 @@
-function [A, distM] = prepareMatrices_AI_optimized(gridDims, domainDims, stencil)
+function [A, distM] = makeFPMatricesAIOpt(gridDims, boundConds, domainDims, stencil)
 %
 % THIS FUNCTION WAS MADE BY OPTIMIZING AUTHORS FUNCTION BY AI TO BE FASTER
 %
@@ -8,8 +8,13 @@ function [A, distM] = prepareMatrices_AI_optimized(gridDims, domainDims, stencil
 
 arguments
     gridDims (1,:) double {mustBeInteger, mustBePositive}
-    domainDims (1,:) double {mustBePositive}
-    stencil double
+    boundConds (1,1) string = "Periodic"
+    domainDims (1,:) double {mustBePositive} = ones(size(gridDims))
+    stencil double = makeStencil(numel(gridDims), gridDims)
+end
+
+if boundConds ~= "Periodic"
+    error("Only periodic boundary conditions are currently supported.");
 end
 
 if isscalar(gridDims)
@@ -52,25 +57,31 @@ end
 % Assemble A in one sparse construction. Repeated (row,column) pairs are
 % summed by SPARSE, as in the original repeated updates to A(g_index, j).
 rows = repelem((1:N).', K, 1);
-cols = zeros(N*K, 1);
-stencVals = repmat(stencil(:), N, 1);
-
-for g = 1:N
-    idx = (g-1)*K + (1:K);
-    neighborSubs = mod(offsets + coords(g, :) - 1, gridDims) + 1;
+cols = zeros(size(rows));
+stencilVals = repmat(stencil(:), N, 1); % vectorize stencil and repeat it
+for row_g = 1:N
+    % Compute all grid coordinates affected by stecnil around g-th entry of
+    % vectorized grid -> (g,g)-th entry of A (in g-th row)
+    neighborSubs = mod(coords(row_g, :) + offsets - 1, gridDims) + 1;
     neighborCells = num2cell(neighborSubs, 1);
-    cols(idx) = sub2ind(gridDims, neighborCells{:});
+    range4row_g = (1:K) + (row_g-1)*K;
+    % Transform the grid coordinate affected by stencil to vectorized
+    % coordnate -> column of A
+    cols(range4row_g) = sub2ind(gridDims, neighborCells{:});
 end
-A = sparse(rows, cols, stencVals, N, N);
+A = sparse(rows, cols, stencilVals, N, N);
 
 % Pairwise periodic distances. This directly computes the same toroidal
 % distance represented by the original shifted distance array.
 dDim = domainDims ./ gridDims;
 distM = zeros(N, N);
 for d = 1:nd
+    % Take the vector of all d-t coordinates and compute all their
+    % differences (gives symmetric matrix)
     delta = abs(coords(:, d) - coords(:, d).');
     delta = min(delta, gridDims(d) - delta) .* dDim(d);
     distM = distM + delta.^2;
 end
 distM = sqrt(distM);
+
 end

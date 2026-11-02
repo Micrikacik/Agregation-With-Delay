@@ -22,9 +22,9 @@ function [rhoRec, rhoHist] = FokkerPlanck(expParams)
 %       gridPointCount (integer scalar) - number of points at which we
 %           disretize the differential equation using uniform step.
 %       L (positive float) - length of the simulation interval [0, L].
-%       maxInitFluc (positive float scalar) - if either 'rho0'
+%       maxInitFlucts (positive float scalar) - if either 'rho0'
 %           'rhoInitHist' is not provided, this value is used to generate
-%           them with random fluctuations, which are at most 'maxInitFluc'.
+%           them with random fluctuations, which are at most 'maxInitFlucts'.
 %
 %       MODEL:
 %       intRad (positive float) - radius of interactions between agents.
@@ -80,6 +80,9 @@ function [rhoRec, rhoHist] = FokkerPlanck(expParams)
 %       It can be directly plugged in as an input to this function to 
 %       continue in the experiment.
 
+arguments
+    expParams (1,1) struct = struct()
+end
 
 %---------------------------------------------------------------------------
 %---------------------------------------------------------------------------
@@ -146,7 +149,7 @@ if ~isfield(expParams,"rho0") || ~isfloat(expParams.rho0) || isempty(expParams.r
                 case 2 
                     gridDims = [100, 100];
                 case 3 
-                    gridDims = [20, 20, 20];
+                    gridDims = [30, 30, 30];
                 otherwise 
                     gridDims = ones(1, d) * 10;
             end
@@ -179,8 +182,8 @@ else
     disp(gridDims)
 end
 
-% Grid point count (or grid (V)olume)
-V = prod(gridDims);
+% Grid point count
+N = prod(gridDims);
 
 % Domain dimensions
 if ~isfield(expParams,"domainDims") || ~isfloat(expParams.domainDims) || ...
@@ -199,20 +202,20 @@ end
 volume = prod(domainDims);
 
 % Initial fluctuations
-if ~isfield(expParams,"maxInitFluc") || ~isfloat(expParams.maxInitFluc) || ...
-        expParams.maxInitFluc <= 0 || ~isscalar(expParams.L)
-    fprintf("Either no or wrong value for the maximal initial fluctuations 'maxInitFluc'.\n")
-    maxInitFluc = 1e-2;           % default maximal initial fluctuations
-    fprintf("Setting maxInitFluc = %.3d.\n\n", maxInitFluc)
+if ~isfield(expParams,"maxInitFlucts") || ~isfloat(expParams.maxInitFlucts) || ...
+        expParams.maxInitFlucts <= 0 || ~isscalar(expParams.L)
+    fprintf("Either no or wrong value for the maximal initial fluctuations 'maxInitFlucts'.\n")
+    maxInitFlucts = 1e-3;           % default maximal initial fluctuations
+    fprintf("Setting maxInitFlucts = %.3d.\n\n", maxInitFlucts)
 else 
-    maxInitFluc = expParams.maxInitFluc;
-    fprintf("maxInitFluc = %.3d\n\n", maxInitFluc)
+    maxInitFlucts = expParams.maxInitFlucts;
+    fprintf("maxInitFlucts = %.3d\n\n", maxInitFlucts)
 end
 
 % Setting random initial density
 if isempty(rho)
-    fluctuations = makeFluctuations(maxInitFluc, V);
-    rho = 1 / volume + fluctuations; % it is density, so integral must be 1
+    flucts = makeFlucts(maxInitFlucts, N);
+    rho = 1 / volume + flucts; % it is density, so integral must be 1
 end
 
 %----------------------------------MODEL------------------------------------
@@ -288,7 +291,7 @@ if ~isfield(expParams,"stepDelay") || ~IsInteger(expParams.stepDelay) || ...
     if ~isfield(expParams,"tau") || ~isfloat(expParams.tau) || expParams.tau < 0 || ...
         ~isscalar(expParams.tau)
         fprintf("Either no or wrong value for the delay 'tau'.\n")
-        stepDelay = 100;                    % default step delay
+        stepDelay = 60;                    % default step delay
         fprintf("Setting stepDelay = %i (tau = %.3d).\n\n", stepDelay, stepDelay * dt)
     else
         stepDelay = round(expParams.tau / dt);
@@ -304,10 +307,10 @@ end
 if ~isfield(expParams,"rhoInitHist") || ~isfloat(expParams.rhoInitHist) || ...
         ~isequal(size(expParams.rhoInitHist), [gridDims, stepDelay])
     fprintf("Either no or wrong value for the matrix of initial densities 'rhoInitHist'.\n")
-    rhoHist = genRhoInitHist(maxInitFluc, rho, stepDelay);  % default initial history
+    rhoHist = genRhoInitHist(maxInitFlucts, rho, stepDelay);  % default initial history
     fprintf("Initializing experiment with random initial density history.\n\n")
 else
-    rhoHist = reshape(expParams.rhoInitHist, [V, stepDelay]); % make it into columns of a matrix
+    rhoHist = reshape(expParams.rhoInitHist, [N, stepDelay]); % make it into columns of a matrix
     fprintf("rhoInitHist accepted.\n\n")
 end
 
@@ -392,11 +395,11 @@ rhoRecCount = getRecCount(stepRecMod);
 % Setup to record initial step
 if isfield(expParams,"recInitStep") && expParams.recInitStep == true
     rhoRecCount = rhoRecCount + 1; % this is used later
-    rhoRec = zeros([V, rhoRecCount]);
+    rhoRec = zeros([N, rhoRecCount]);
     rhoRec(:,1) = rho;
     rhoRecIndex = 2;
 else 
-    rhoRec = zeros([V, rhoRecCount]);
+    rhoRec = zeros([N, rhoRecCount]);
     rhoRecIndex = 1;
 end
 
@@ -405,12 +408,12 @@ end
 
 fprintf("----------------------------------\n\n")
 
-if ~isfield(expParams,"A") || ~isfloat(expParams.A) || ~isequal(size(expParams.A), [V,V]) || ...
-        ~isfield(expParams,"distM") || ~isfloat(expParams.distM) || ~isequal(size(expParams.distM), [V,V])
+if ~isfield(expParams,"A") || ~isfloat(expParams.A) || ~isequal(size(expParams.A), [N,N]) || ...
+        ~isfield(expParams,"distM") || ~isfloat(expParams.distM) || ~isequal(size(expParams.distM), [N,N])
     fprintf("Either no or wrong value for either the discretization matrix 'A' or the distance matrix 'distM'.\n")
     fprintf("Constructing default discretization and distance matrices.\n")
     fprintf("(This can take some time for larger systems and higher dimensions, so it is advised to precalculate the matrices.)\n\n")
-    [A, distM] = makeFPMatrices(gridDims, boundConds, domainDims, makeStencil(d, gridDims));
+    [A, distM] = makeFPMatricesAIOpt(gridDims, boundConds, domainDims, makeStencil(d, gridDims));
 else
     A = expParams.A;
     distM = expParams.distM;
@@ -431,13 +434,13 @@ dbv = discretizedBallVolume(intRadTol, dDim);
 W = sparse(double(distM < intRadTol));   % strict cutoff, robust near multiples of dx
 W = W / dbv;
 
-%sum(W,"all") / V
+%sum(W,"all") / N
 %spy(W)
 
 % Make new figure if simulation is plotted and plot initial density
 if stepPlotMod > 0
     figure
-    plotSimStep(rho, 0)
+    plotSimStep(rho, rhoHist(:,histCoeff), 0)
 end
 
 
@@ -469,11 +472,11 @@ for t = 1:stepCount
     G_sqrd = 1 / 2 * exp(-rd * WConvRhoDelayed) .^ 2;
 
     % Create the matrix for semi-implicit finite differences
-    M = speye(V,V) + dt * A .* (G_sqrd.');
+    M = speye(N,N) + dt * A .* (G_sqrd.');
     
     %calculate the L^2 norm
     %E(t)=sum((rho.^2).*G);
-
+    
     % Make the step
     rho = M \ rho;
     
@@ -483,7 +486,7 @@ for t = 1:stepCount
     
     % Plot
     if stepPlotMod > 0 && mod(t,stepPlotMod) == 0
-        plotSimStep(rho, t)
+        plotSimStep(rho, rhoDelayed, t)
     end
 
     % Record simulation step
@@ -495,21 +498,24 @@ for t = 1:stepCount
     end
 end
 
-function plotSimStep(rho, t)
-    f = [];
-    maxPlot = 1.5 * max(rho);
+function plotSimStep(rho, rhoDelayed, t)
+    maxPlot = max(1.2 * max(rho));
+    title(sprintf("T = %d", t))
     switch d
         case 1
             grid1D = ((1:gridDims).' - 0.5) * dDim;
+            clf
+            hold on
+            plot(grid1D, rhoDelayed)
             plot(grid1D, rho)
+            hold off
             axis([0, domainDims, 0, maxPlot])
-            f = getframe;
+            legend("rho delayed", "rho")
         case 2
             imagesc(reshape(rho, gridDims))
             set(gca, 'YDir', 'normal');
             clim([0, maxPlot])
             colorbar("Ticks", linspace(0, maxPlot, 5))
-            f = getframe;
         case 3
             gridX = ((1:gridDims(1)) - 0.5) * dDim(1);
             gridY = ((1:gridDims(2)) - 0.5) * dDim(2);
@@ -524,13 +530,16 @@ function plotSimStep(rho, t)
             isosurface(gridX, gridY, gridZ, reshape(rho, gridDims), rho95prc);
             clim([0, maxPlot])
             colorbar("Ticks", linspace(0, maxPlot, 5))
-            f = getframe;
         otherwise
             error('Dimension d = %.i not implemented.', d);
     end
+    
+    title(sprintf("T = %d", t * dt))
 
-    if recordVideo && ~isempty(f)
-        writeVideo(vidWriter,f)
+    f = getframe;
+
+    if recordVideo
+        writeVideo(vidWriter, f)
     end
 end
 
@@ -566,7 +575,7 @@ fprintf(" finished.\n\n")
 if stepPlotMod ~= -2
     fprintf("----------------------------------\n\n")
     fprintf("Plotting agregation groups.\n\n")
-    plotSimStep(rho, stepCount) % TODO - agregation detection
+    plotSimStep(rho, rhoHist(:, stepDelay), stepCount) % TODO - agregation detection
 end
 
 

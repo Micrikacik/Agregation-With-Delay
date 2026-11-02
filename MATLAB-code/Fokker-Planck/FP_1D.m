@@ -36,7 +36,7 @@ A=zeros(Nx,Nx);
 
 
 % Initial condition for rho
-fluctuations = makeFluctuations(maxInitFluc, Nx);
+fluctuations = makeFlucs(maxInitFluc, Nx);
 rho = 1 + fluctuations;
 
 rhoBuf = zeros(tau,Nx);

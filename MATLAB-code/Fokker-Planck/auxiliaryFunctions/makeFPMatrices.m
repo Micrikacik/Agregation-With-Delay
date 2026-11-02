@@ -21,7 +21,6 @@ end
 if length(size(stencil)) ~= length(gridDims)
     error("Wrong stencil format.");
 end
-
 if length(domainDims) ~= length(gridDims)
     error("'domainDims' and 'gridDims' do not match.");
 end

@@ -14,16 +14,16 @@ else
 end
 
 gridDims = size(grid);
-V = prod(gridDims);
+N = prod(gridDims);
 
 indices = cell(1, d);
-[indices{:}] = ind2sub(gridDims, (1:V).');
-coords_dist = zeros(V, d);
+[indices{:}] = ind2sub(gridDims, (1:N).');
+coords_dist = zeros(N, d);
 for d = 1:d
     coords_dist(:, d) = indices{d} - 1;
 end
 
-for i = 1:V
+for i = 1:N
     delta = min(coords_dist(i,:), gridDims - coords_dist(i,:));
     grid(i) = sum((delta .* dDim) .^ 2);
 end
