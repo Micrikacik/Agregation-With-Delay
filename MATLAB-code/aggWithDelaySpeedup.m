@@ -5,9 +5,8 @@ function [xRec, thetaRec, thetaOccur, xHist, rngSetts] = aggWithDelaySpeedup(exp
 %--------------------------------------------------------------------------
 %
 % INPUT:
-%   expParams (structure) - struct, which can contain following fields, if an important
-%       field is missing, default value is used. If no input is required,
-%       set to '{}'.
+%   expParams (structure) - struct, which can contain following fields. 
+%       If an important field is missing, default value is used.
 %
 %       POSSIBLE FIELDS:
 %
@@ -17,22 +16,36 @@ function [xRec, thetaRec, thetaOccur, xHist, rngSetts] = aggWithDelaySpeedup(exp
 %           random generator settings. This struct is also an output of
 %           this function, and is created after the simulation is done.
 %           This field's main goal is to enable user to continue in an
-%           experiment which already finished, by using the values it
-%           returned as initial conditions and random generator settings.
+%           experiment which finished "in the middle", by using the values 
+%           it returned as initial conditions and random generator settings.
 %
 %       SPACE & INITIAL CONDITIONS:
 %       x0 (float matrix) - matrix of initial positions.
-%           x(i,:) - position (float vector) in d-dim torus of the i-th agent.
-%           Alternatively, instead of x0, set the dimension d and number of
-%           agents N.
-%       dims (positive float ROW vector) - dimensions of the simulation, i.e., dimensions
-%           of the box, in which the agents move.
-%           This row vector does NOT influence the parameter d, in fact, dims
-%           will be either truncated or filled up with 1, to match its
+%           x(i,:) - position (float vector) of the i-th agent. Positions
+%           should be contained within the box defined by 'dims'.
+%           Alternatively, set the dimension 'd' and the number of
+%           agents 'N'. In that case, uniformly random initial positions
+%           will be selected.
+%       xInitHist (float matrix) - initial history of the matrix of 
+%           positions used in the calculation of the first few iterations.
+%           x(:,:,i) - position matrix i steps into the past
+%           Alternatively, set the dimension 'd', the number of
+%           agents 'N' and the step delay 'stepDelay'. In that case, random
+%           'blind motion' will be generated as the initial history.
+%       N (positive integer) - number of agents.
+%           Alternative to 'x0' and 'xInitHist'.
+%       d (positive integer) - dimension.
+%           Alternative to 'x0' and 'xInitHist'.
+%       dims (positive float ROW vector) - dimensions of the simulation, 
+%           i.e., dimensions of the box, in which the agents move. This box
+%           "starts" at vector 0 and "ends" at vector 'dims'.
+%           This row vector does NOT influence the parameter d, in fact, 
+%           dims will be either truncated or filled up with 1, to match its
 %           length with d.
 %
 %       MODEL:
 %       intRad (positive float) - radius of interactions between agents.
+%       rd (float) - response decay. The 'a' in 'G(theta) = exp(-a*theta)'.
 %       boundConds (string) - type of the boundary conditions.
 %           Must be one of the following strings:
 %               "NoBoundary"
@@ -42,62 +55,68 @@ function [xRec, thetaRec, thetaOccur, xHist, rngSetts] = aggWithDelaySpeedup(exp
 %       TIME & DELAY:
 %       dt (positive float) - time step length.
 %       stepCount (positive integer) - number of time steps.
-%       T (positive float) - total time of the simulation, alternative to 
-%           'stepCount', which will be 'stepCount = round(T / dt)', if not provided.
+%           Alternatively, set the total time 'T'. In that case,
+%           'round(T / dt)' will be set as step count.
+%       T (positive float) - total time of the simulation.
+%           Alternative to 'stepCount'.
 %       delayType (string) - type of the delay.
 %           Must be one of the following strings:
 %               "Reaction"
 %               "Transmission"
 %               "Inner"
 %               "None"
-%       stepDelay (nonnegative integer) - number of steps used to delay the simulation.
-%       tau (nonnegative float) - delay in the simulation, alternative to 
-%           'stepDelay', which will be 'stepDelay = round(tau / dt)', if not provided.
-%       xInitHist (float matrix) - initial history of the matrix of positions used in
-%           calculation of the first few iterations.
-%           x(:,:,i) - position matrix i steps into the past, 
-%           where 1 <= i <= stepDelay.
+%       stepDelay (nonnegative integer) - number of steps used to delay 
+%           the simulation.
+%           Alternative to 'xInitHist'.
+%           Alternatively, set the (real time) delay 'tau'. In that case,
+%           'round(tau / dt)' will be set as step delay.
+%       tau (nonnegative float) - delay in the simulation.
+%           Alternative to 'stepDelay'.
 %
 %       USER:
-%       waitForConf (logical) - if true, then wait for user to start the simulation.
+%       waitForConf (logical) - if true, then wait for the user to start 
+%           the simulation.
 %       stepPlotMod (positive integer or -1 or -2) - simulation plots the 
-%           t-th step if the reminder of t divided by stepRecMod is zero. 
+%           t-th step if the reminder of 't' divided by stepPlotMod is 0. 
 %           The plots are shown in movie-like sense. 
-%           If stepPlotMod = -1, then only the last step is plotted.
-%           If stepPlotMod = -2, then no steps are plotted.
-%       markAgents (positive integer vector) - vector containing indeces
-%           of the agents to be marked. See 'markColor' for mark color.
+%           If 'stepPlotMod = -1', then only the last step is plotted.
+%           If 'stepPlotMod = -2', then no steps are plotted.
+%       markAgents (positive integer vector) - vector containing indices
+%           of agents to be marked. See 'markColors' for the mark color.
 %       markColors (nonegative float matrix) - matrix with 3 columns of the
-%           same size as 'markAgents'. In each row must be an eligible RGB
-%           triplet, which indicates what color to mark the agent with 
-%           (specified by 'markAgents' index in the same row).
-%       stepRecMod (positive integer or -1) - simulation records the t-th matrix 
-%           of positions if the reminder of t divided by 'stepRecMod' is zero. 
+%           same length as 'markAgents'. In each row must be an eligible 
+%           RGB triplet, which indicates what color to mark the agent with 
+%           (specified by corresponding 'markAgents' index).
+%       stepRecMod (positive integer or -1) - simulation records the t-th 
+%           matrix of positions if the reminder of 't' divided by 
+%           'stepRecMod' is 0. 
 %           Last matrix is always recorded.
-%           If stepRecMod = -1, then only the last matrix is recorded.
+%           If 'stepRecMod = -1', then only the last matrix is recorded.
 %       recInitStep (logical) - if true, then the initial positions matrix
-%           x0 is recorded to xRec(:,:,1).
-%       thetaRecMod (positive integer or -1) - simulation records the t-th average
-%           density vector (theta) and its delayed value if the reminder of t 
-%           divided by 'thetaRecMod' is zero.e 
+%           'x0' is recorded to 'xRec(:,:,1)'.
+%       thetaRecMod (positive integer or -1) - simulation records the t-th 
+%           density vector (theta) and its delayed value if the reminder 
+%           of 't' divided by 'thetaRecMod' is 0.
 %           Last vector is always recorded.
-%           If thetaRecMod = -1, then only the last vector is recorded.
+%           If 'thetaRecMod = -1', then only the last vector is recorded.
 %           If no value is specified, then the value of 'stepRecMod' is
 %           used instead.
-%       recInitTheta (logical) - if true, then the initial density vector (theta)
-%           and its delayed value are recorded to thetaRec(:,:,1).
+%       recInitTheta (logical) - if true, then the initial density vector 
+%           (theta) and its delayed value are recorded to 
+%           'thetaRec(:,:,1)'. 
 %           If no value is specified, then the value of 'recInitStep' is
 %           used instead.
 %       thetaOccurMod (positive integer or -1) - simulation records the 
-%           occurances of an agents with specific numbers of actual neighbours 
-%           and delayed neighbours in the t-th step, if the reminder of t 
-%           divided by 'thetaOccurMod' is zero.
-%           The first step is always counted (if thetaOccurMod >= 1).
-%           The last step is counted only if mod(stepCount,thetaOccurMod) == 0.
-%           If thetaOccurMod = -1, then no in-between steps are counted.
+%           occurances of agents with specific numbers of actual neighbours 
+%           and delayed neighbours in the t-th step, if the reminder of 't' 
+%           divided by 'thetaOccurMod' is 0.
+%           The last step is always counted.
+%           The first step is always counted, if 'thetaOccurMod >= 1'.
+%           If 'thetaOccurMod = -1', then no in-between steps are counted.
 %           If no value is specified, then the value of 'thetaRecMod' is
 %           used instead.
-%       expTitle (string) - title to be printed before the experiment begins
+%       expTitle (string) - title to be printed before the experiment 
+%           begins, and after the experiment ends.
 %       videoPath (string) - if provided, script records the plotted
 %           positions as video onto this given path. This path should
 %           include the filename, but NOT the file extension. It will be
@@ -105,37 +124,40 @@ function [xRec, thetaRec, thetaOccur, xHist, rngSetts] = aggWithDelaySpeedup(exp
 %
 % OUTPUT:
 %   xRec (float matrix) - 3 dimensional matrix of all recorded matrices of
-%       positions. Its dimensions are [N,d,count], where count is the final
-%       count of recorded matrices. 
-%       xRec(:,:,end) is always the matrix of positions at the end of the simulation. 
-%       If input stepRecMod = 0, then xRec(:,:,1) is the matrix of initial
-%       positions.
-%   thetaRec (float matrix) - 3 dimensional matrix of all recorded average 
-%       density vectors (theta). Its dimensions are [N,2,count], 
-%       where count is the final count of recorded matrices.
-%       thetaRec(:,1,i) is the density vector after i-th step of the simulation
-%       calculated with NO delay.
-%       thetaRec(:,2,i) is the density vector after i-th step of the simulation
-%       calculated WITH delay, based on the delay type.
-%       thetaRec(:,:,end) is always the density vector at the end of the simulation. 
-%       If input thetaRecMod = 0, then thetaRec(:,:,1) is the initial
-%       density vector.
+%       positions. Its dimensions are '[N,d,count]', where 'count' is the 
+%       final number of recorded matrices. 
+%       'xRec(:,:,end)' is always the matrix of positions at the end of the 
+%       simulation. 
+%       If 'recInitStep = true', then 'xRec(:,:,1)' is the matrix of 
+%       initial positions.
+%   thetaRec (float matrix) - 3 dimensional matrix of all recorded density 
+%       vectors (theta). Its dimensions are '[N,2,count]', where 'count' is 
+%       the final number of recorded matrices.
+%       'thetaRec(:,1,i)' is the actual (without delay) density vector 
+%       after the i-th step of the simulation.
+%       'thetaRec(:,2,i)' is the delayed density vector after the i-th step
+%       of the simulation.
+%       'thetaRec(:,:,end)' are always (non/delayed) density vectors at the
+%       end of the simulation. 
+%       If 'recInitTheta = true', then 'thetaRec(:,:,1)' are the initial
+%       density vectors.
 %   thetaOccur (float matrix) - 2 dimensional matrix. 
-%       Rows represent all the possible amounts of agent within 
-%       the interaction radius of one agent. 
-%       Columns represent all the possible amounts of agents within 
-%       the interaction radius of one agent, shifted by one to right 
-%       (i.e. (1,1) represents (0,0)), while taking into account used delay. 
-%       Element recTheta(i,j) is then the number of ocurrences of an
-%       agent, who had i-1 actual neighbours and j-1 delayed neighbours, in
-%       any step which was recorded based on 'thetaRecMod'.
+%       Row indices represent all the possible amounts of agents within 
+%       the interaction radius of one agent, shifted by one to right.
+%       Column indices represent all the possible amounts of agents within 
+%       the interaction radius of one agent, shifted by one to right, while
+%       taking into account used delay. 
+%       The shift means that, e.g., '(1,1)' represents '(0,0)'.
+%       Element 'thetaOccur(i,j)' is then the number of ocurrences of any
+%       agent, who had 'i-1' actual neighbours and 'j-1' delayed 
+%       neighbours, in any step which was recorded based on 'thetaRecMod'.
 %   xHist (float matrix) - 3 dimensional matrix of the last history of
-%       positions, which still affect the following simulation steps.
-%       Its dimensions are [N,d,stepDelay]. It can be directly plugged in
-%       as an input to this function to continue in the experiment.
+%       positions, which still affects the following simulation steps.
+%       Its dimensions are '[N,d,stepDelay]'. It can be directly plugged in
+%       as the input to this function to continue in the experiment.
 %   rngSetts (struct) - struct returned by the rng function, containing
 %       random generator settings right after the simulation have finished.
-%       It can be directly plugged in as an input to this function to 
+%       It can be directly plugged in as the input to this function to 
 %       continue in the experiment.
 
 arguments
@@ -212,6 +234,32 @@ else
     fprintf("x0 accepted, N = %i, d = %i.\n\n", N, d)
 end
 
+% Initial history of positions
+if ~isempty(x)
+    if ~isfield(expParams, "xInitHist") || ~isfloat(expParams.xInitHist) || ...
+            size(expParams.xInitHist, 1) ~= N || size(expParams.xInitHist, 2) ~= d || ...
+            (isempty(expParams.xInitHist) && ndims(expParams.xInitHist) ~= 3) % check that it is empty only when it is 3d = no delay defined => can accept
+        fprintf("xInitHist - Either no or wrong value for the matrix of initial history of positions.\n")
+        xHist = [];  % default initial history will be made after stepDelay
+        fprintf("Initializing experiment with 'blind motion' initial history.\n\n")
+    else
+        xHist = expParams.xInitHist;
+        fprintf("xInitHist accepted.\n\n")
+    end
+else % We have no info about the space
+    if ~isfield(expParams, "xInitHist") || ~isfloat(expParams.xInitHist) || ...
+            (isempty(expParams.xInitHist) && ndims(expParams.xInitHist) ~= 3) % check that it is empty only when it is 3d = no delay defined => can accept
+        fprintf("xInitHist - Either no or wrong value for the matrix of initial history of positions.\n")
+        xHist = [];  % default initial history will be made after stepDelay
+        fprintf("Initializing experiment with 'blind motion' initial history.\n\n")
+    else
+        xHist = expParams.xInitHist;
+        N = size(xHist,1);
+        d = size(xHist,2);
+        fprintf("xInitHist accepted.\n\n")
+    end
+end
+
 % Dimensions
 if ~isfield(expParams, "dims") || ~isfloat(expParams.dims) || any(expParams.dims <= 0) || ...
         ~isequal(size(expParams.dims),[1,d])
@@ -245,6 +293,17 @@ end
 kappa = pi^(d/2) / gamma(d / 2 + 1);    % volume of a unit d-ball
 W_norm = kappa * intRad^d;              % W_norm to normalize W (done after the summation for efficiency)
 intRadSqrd = intRad*intRad;             % Squared raduius for faster calculations
+
+% Response decay
+if ~isfield(expParams, "rd") || ~isnumeric(expParams.rd) || ...
+        ~isscalar(expParams.rd)
+    fprintf("rd - Either no or wrong value for the response decay.\n")
+    rd = 1;
+    fprintf("Setting rd = %.3d\n\n", rd)
+else
+    rd = expParams.rd;
+    fprintf("rd = %.3d\n\n", rd)
+end
 
 % Boundary conditions
 if ~isfield(expParams, "boundConds") || ~isstring(expParams.boundConds) || ...
@@ -289,18 +348,6 @@ else
     fprintf("stepCount = %i (T = %.3d).\n\n", stepCount, stepCount * dt)
 end
 
-% Initial history of positions
-if ~isfield(expParams, "xInitHist") || ~isfloat(expParams.xInitHist) || ...
-        size(expParams.xInitHist, 1) ~= N || size(expParams.xInitHist, 2) ~= d || ...
-        (isempty(expParams.xInitHist) && ndims(expParams.xInitHist) ~= 3) % check that it is empty only when it is 3d = no delay defined => can accept
-    fprintf("xInitHist - Either no or wrong value for the matrix of initial history of positions.\n")
-    xHist = [];  % default initial history will be made after stepDelay
-    fprintf("Initializing experiment with 'blind motion' initial history.\n\n")
-else
-    xHist = expParams.xInitHist;
-    fprintf("xInitHist accepted.\n\n")
-end
-
 % Step delay
 if isempty(xHist) && ndims(xHist) ~= 3
 
@@ -311,7 +358,7 @@ if isempty(xHist) && ndims(xHist) ~= 3
                 expParams.tau < 0 || ~isscalar(expParams.tau)
             fprintf("stepDelay (tau) - Either no or wrong value for both the step delay" + ...
                 " and the delay.\n")
-            stepDelay = 100;                    % default stepDelay
+            stepDelay = 60;                    % default stepDelay
             fprintf("Setting stepDelay = %i (tau = %.3d).\n\n", stepDelay, stepDelay * dt)
         else
             stepDelay = round(expParams.tau / dt);
@@ -368,12 +415,15 @@ end
 if stepPlotMod > 0
     % Marked agents indeces
     if ~isfield(expParams,"markAgents") || ~IsInteger(expParams.markAgents) || ...
-            any(expParams.markAgents <= 0) || ~iscolumn(expParams.markAgents)
+            any(expParams.markAgents <= 0) || ~isvector(expParams.markAgents)
         fprintf("markAgents - Either no or wrong value for the marked agents indeces.\n")
         markAgents = [];  % default marks
         fprintf("None of the agents will be marked.\n\n")
     else
         markAgents = expParams.markAgents;
+        if isrow(markAgents)
+            markAgents = markAgents.';
+        end
         fprintf("markAgents: ")
         disp(markAgents.')
     end
@@ -631,7 +681,7 @@ for t = 1:stepCount
     end
         
     % Diffusivity
-    G_vals = exp(-thetaDelayed);
+    G_vals = exp(-rd * thetaDelayed);
             
     % Calculate the update
     updt = G_vals .* randn(N,d);

@@ -227,6 +227,17 @@ else
     fprintf("intRad = %.3d\n\n", intRad)
 end
 
+% Response decay
+if ~isfield(expParams,"rd") || ~isnumeric(expParams.rd) || ...
+        ~isscalar(expParams.rd)
+    fprintf("Either no or wrong value for the response decay 'rd'.\n")
+    rd = 1;
+    fprintf("Setting rd = %.3d\n\n", rd)
+else
+    rd = expParams.rd;
+    fprintf("rd = %.3d\n\n", rd)
+end
+
 % Boundary conditions
 if ~isfield(expParams,"boundConds") || ~isstring(expParams.boundConds) || ...
         ~isscalar(expParams.boundConds)
@@ -236,16 +247,6 @@ if ~isfield(expParams,"boundConds") || ~isstring(expParams.boundConds) || ...
 else
     boundConds = expParams.boundConds;
     fprintf("boundConds: '%s'.\n\n", boundConds)
-end
-
-% Response decay
-if ~isfield(expParams,"rd") || ~isnumeric(expParams.rd)
-    fprintf("Either no or wrong value for the response decay 'rd'.\n")
-    rd = 1;
-    fprintf("Setting rd = %.3d\n\n", rd)
-else
-    rd = expParams.rd;
-    fprintf("rd = %.3d\n\n", rd)
 end
 
 %------------------------------TIME-&-DELAY---------------------------------
