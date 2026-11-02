@@ -22,7 +22,7 @@ function [xRec, thetaRec, thetaOccur, xHist, rngSetts] = aggWithDelaySpeedup(exp
 %       SPACE & INITIAL CONDITIONS:
 %       x0 (float matrix) - matrix of initial positions.
 %           x(i,:) - position (float vector) of the i-th agent. Positions
-%           should be contained within the box defined by 'dims'.
+%           should be contained within the box defined by 'domainDims'.
 %           Alternatively, set the dimension 'd' and the number of
 %           agents 'N'. In that case, uniformly random initial positions
 %           will be selected.
@@ -36,11 +36,11 @@ function [xRec, thetaRec, thetaOccur, xHist, rngSetts] = aggWithDelaySpeedup(exp
 %           Alternative to 'x0' and 'xInitHist'.
 %       d (positive integer) - dimension.
 %           Alternative to 'x0' and 'xInitHist'.
-%       dims (positive float ROW vector) - dimensions of the simulation, 
+%       domainDims (positive float ROW vector) - dimensions of the simulation, 
 %           i.e., dimensions of the box, in which the agents move. This box
-%           "starts" at vector 0 and "ends" at vector 'dims'.
+%           "starts" at vector 0 and "ends" at vector 'domainDims'.
 %           This row vector does NOT influence the parameter d, in fact, 
-%           dims will be either truncated or filled up with 1, to match its
+%           domainDims will be either truncated or filled up with 1, to match its
 %           length with d.
 %
 %       MODEL:
@@ -261,22 +261,22 @@ else % We have no info about the space
 end
 
 % Dimensions
-if ~isfield(expParams, "dims") || ~isfloat(expParams.dims) || any(expParams.dims <= 0) || ...
-        ~isequal(size(expParams.dims),[1,d])
-    fprintf("dims - Either no or wrong value for the vector of dimensions.\n")
-    dims = ones(1,d);           % default dimensions
-    fprintf("Setting dims:")
-    disp(dims)
+if ~isfield(expParams, "domainDims") || ~isfloat(expParams.domainDims) || any(expParams.domainDims <= 0) || ...
+        ~isequal(size(expParams.domainDims),[1,d])
+    fprintf("domainDims - Either no or wrong value for the vector of dimensions.\n")
+    domainDims = ones(1,d);           % default dimensions
+    fprintf("Setting domainDims:")
+    disp(domainDims)
 else 
-    dims = expParams.dims;
-    fprintf("dims:")
-    disp(dims)
+    domainDims = expParams.domainDims;
+    fprintf("domainDims:")
+    disp(domainDims)
 end
-volume = prod(dims);
+volume = prod(domainDims);
 
 % Setting random initial positions
 if isempty(x)
-    x = rand(N, d) .* (dims);
+    x = rand(N, d) .* (domainDims);
 end
 
 %----------------------------------MODEL-----------------------------------
@@ -379,7 +379,7 @@ end
 
 % Make default xInihHist
 if isempty(xHist) && stepDelay > 0
-    xHist = genInitHist(x, dt, stepDelay, boundConds, dims);
+    xHist = genInitHist(x, dt, stepDelay, boundConds, domainDims);
 end
 
 % Delay type
@@ -690,7 +690,7 @@ for t = 1:stepCount
     x = x + sqrt(dt) * updt;
 
     % Apply BCs
-    x = applyBCs(x, boundConds, dims);
+    x = applyBCs(x, boundConds, domainDims);
 
     % Plot - to make correct 1D plot, we need current theta
     if stepPlotMod > 0 && mod(t, stepPlotMod) == 0
@@ -713,15 +713,15 @@ function plotSimStep(theta)
     switch d
         case 1
             scatter(x(:,1), theta * W_norm / volume, getPointSize()^2, scatterColors, '.');
-            axis([0 dims(1) 0 1]);
+            axis([0 domainDims(1) 0 1]);
             f = getframe;
         case 2
             scatter(x(:,1), x(:,2), getPointSize()^2, scatterColors, '.'); 
-            axis([0 dims(1) 0 dims(2)]);
+            axis([0 domainDims(1) 0 domainDims(2)]);
             f = getframe;
         case 3
             scatter3(x(:,1), x(:,2), x(:,3), getPointSize()^2, scatterColors, '.');
-            axis([0 dims(1) 0 dims(2) 0 dims(3)]);
+            axis([0 domainDims(1) 0 domainDims(2) 0 domainDims(3)]);
             f = getframe;
     end
 
@@ -757,7 +757,7 @@ function DSqrd = getDistsSqrd(x_1, x_2)
             DSqrd = distancesSqrd(x_1, x_2);
         case "Periodic"
             % Distances on torus
-            DSqrd = torusDistancesSqrd(x_1, x_2, dims);
+            DSqrd = torusDistancesSqrd(x_1, x_2, domainDims);
         case "Reflective"
             % Normal distances
             DSqrd = distancesSqrd(x_1, x_2);
@@ -827,7 +827,7 @@ if stepPlotMod ~= -2
 
     fprintf("----------------------------------\n\n")
     fprintf("Plotting agregation groups.\n\n")
-    plotAgg(x, theta * W_norm / volume, dims, boundConds)
+    plotAgg(x, theta * W_norm / volume, domainDims, boundConds)
 end
 
 function printTitle()

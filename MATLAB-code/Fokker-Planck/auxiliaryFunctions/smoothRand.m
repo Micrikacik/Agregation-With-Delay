@@ -1,28 +1,24 @@
-function s = smoothRand(gridDims)
-    
-w = min(gridDims);
+function noise = smoothRand(gridDims)
+
+nd = numel(gridDims);
+gridPeriod = min(gridDims);
 
 if isscalar(gridDims)
     gridDims = [gridDims, 1];
 end
 
-nd = numel(gridDims);
-s = zeros(gridDims); 
-i = 0;
+noise = zeros(gridDims); 
+noisePart = ones(gridDims); 
 
-indices = cell(1, nd);
-for d = 1:nd
-    indices{d} = (1:gridDims(d));
-end
-
-while w > 3
-    i = i + 1;
-    spl = interpn(rand(gridDims), i-1, 'spline');
-    if isrow(spl)
-        spl = spl.';
+while gridPeriod > 4
+    for d = 1:nd
+        ls = (1:gridDims(d)).' / gridPeriod * 2*pi;
+        rOffset = rand(1) * gridDims(d) / gridPeriod * 2*pi;
+        noiseElem = sin(ls + rOffset) * log(gridPeriod);
+        noisePart = noisePart .* reshape(noiseElem, [ones(1, d-1), numel(noiseElem), 1]);
     end
-    s = s + i * spl(indices{:});
-    w = w - ceil(w/2 - 1);
+    noise = noise + noisePart;
+    gridPeriod = gridPeriod / 2;
 end
 
-s = (s - min(s(:))) ./ (max(s(:)) - min(s(:)));
+return

@@ -189,7 +189,7 @@ N = prod(gridDims);
 if ~isfield(expParams,"domainDims") || ~isfloat(expParams.domainDims) || ...
         any(expParams.domainDims <= 0) || ~isequal(size(expParams.domainDims), size(gridDims))
     fprintf("Either no or wrong value for the domain dimensions 'domainDims'.\n")
-    domainDims = ones(size(gridDims));           % default domain dims
+    domainDims = ones(size(gridDims));           % default domain domainDims
     fprintf("Setting domainDims:")
     disp(domainDims)
 else 

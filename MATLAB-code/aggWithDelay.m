@@ -25,9 +25,9 @@ function [xRec, thetaRec, xHist, rngSetts] = aggWithDelay(expParams)
 %           x(i,:) - position (float vector) in [0,1]^d of the i-th agent.
 %           Alternatively, instead of x0, set the dimension d and number of
 %           agents N.
-%       dims (positive float ROW vector) - dimensions of the simulation, i.e., dimensions
+%       domainDims (positive float ROW vector) - dimensions of the simulation, i.e., dimensions
 %           of the box, in which the agents move.
-%           Thic row vector does NOT influence the parameter d, in fact, dims
+%           Thic row vector does NOT influence the parameter d, in fact, domainDims
 %           will be either truncated or filled up with 1, to match its
 %           length with d.
 %
@@ -189,20 +189,20 @@ else
 end
 
 % Dimensions
-if ~isfield(expParams,"dims") || ~isfloat(expParams.dims) || any(expParams.dims <= 0) || ...
-        ~isequal(size(expParams.dims),[1,d])
-    fprintf("Either no or wrong value for the vector of dimensions 'dims'.\n")
-    dims = ones(1,d);           % default dimensions
+if ~isfield(expParams,"domainDims") || ~isfloat(expParams.domainDims) || any(expParams.domainDims <= 0) || ...
+        ~isequal(size(expParams.domainDims),[1,d])
+    fprintf("Either no or wrong value for the vector of dimensions 'domainDims'.\n")
+    domainDims = ones(1,d);           % default dimensions
     fprintf("Setting all dimensions to 1.\n\n")
 else 
-    dims = expParams.dims;
-    fprintf("dims: \n")
-    disp(dims)
+    domainDims = expParams.domainDims;
+    fprintf("domainDims: \n")
+    disp(domainDims)
 end
 
 % Setting random initial positions
 if isempty(x)
-    x = rand(N, d) .* (dims);
+    x = rand(N, d) .* (domainDims);
 end
 
 %----------------------------------MODEL------------------------------------
@@ -312,7 +312,7 @@ end
 if ~isfield(expParams,"xInitHist") || ~isfloat(expParams.xInitHist) || ...
         ~isequal(size(expParams.xInitHist),[N,d,stepDelay])
     fprintf("Either no or wrong value for the matrix of initial history of positions 'xInitHist'.\n")
-    xHist = genInitHist(x,dt,stepDelay,boundConds,dims);  % default initial history
+    xHist = genInitHist(x,dt,stepDelay,boundConds,domainDims);  % default initial history
     fprintf("Initializing experiment with 'blind motion' initial history.\n\n")
 else
     xHist = expParams.xInitHist;
@@ -455,7 +455,7 @@ end
 W_max = W(0);
 
 % Volume of simulation box to normalize model
-volume = prod(dims);
+volume = prod(domainDims);
 
 % Colors of agents in plots (to visualize marked agents)
 scatterColors = repmat([0.1,0.6,1],[N,1]); % Unmarked color
@@ -500,11 +500,11 @@ for t=1:stepCount
     switch boundConds
         case "Periodic"
             % Periodic BCs
-            x = mod(x,dims);
+            x = mod(x,domainDims);
         case "Reflective"
             % Reflective BCs
             x = abs(x);
-            x = dims - abs(dims - x);
+            x = domainDims - abs(domainDims - x);
     end
 
     % Plot - to make correct 1D plot, we need current theta
@@ -527,15 +527,15 @@ function plotSimStep(theta)
     switch d
         case 1
             scatter(x(:,1),theta./(W_max*volume),[],scatterColors); 
-            axis([0 dims(1) 0 1]);
+            axis([0 domainDims(1) 0 1]);
             getframe;
         case 2
             scatter(x(:,1),x(:,2),[],scatterColors); 
-            axis([0 dims(1) 0 dims(2)]);
+            axis([0 domainDims(1) 0 domainDims(2)]);
             getframe;
         case 3
             scatter3(x(:,1),x(:,2),x(:,3),[],scatterColors);
-            axis([0 dims(1) 0 dims(2) 0 dims(3)]);
+            axis([0 domainDims(1) 0 domainDims(2) 0 domainDims(3)]);
             getframe;
     end
 end
@@ -564,7 +564,7 @@ function D = getDists(x_1,x_2)
     switch boundConds
         case "Periodic"
             % Distances on torus
-            D = torusDistances(x_1,x_2,dims);
+            D = torusDistances(x_1,x_2,domainDims);
         case "Reflective"
             % Normal distances
             D = distances(x_1,x_2);
@@ -608,7 +608,7 @@ if stepPlotMod ~= -2
 
     fprintf("----------------------------------\n\n")
     fprintf("Plotting agregation groups.\n\n")
-    plotAgg(x,theta./(W_max*volume),dims,boundConds)
+    plotAgg(x,theta./(W_max*volume),domainDims,boundConds)
 end
 
 end

@@ -1,9 +1,9 @@
-function [] = plotLocDens(x, theta, dims)
+function [] = plotLocDens(x, theta, domainDims)
 
 arguments
     x
     theta
-    dims = ones(size(x,2),1)
+    domainDims = ones(size(x,2),1)
 end
 
 % Plots the agents and gives them color based on their local density theta
@@ -25,11 +25,11 @@ switch d
         getframe;
     case 2
         scatter(x(:,1),x(:,2),[],redblue(theta),"filled");
-        axis([0 dims(1) 0 dims(2)]);
+        axis([0 domainDims(1) 0 domainDims(2)]);
         getframe;
     case 3
         scatter3(x(:,1),x(:,2),x(:,3),[],redblue(theta),'filled');
-        axis([0 dims(1) 0 dims(2) 0 dims(3)]);
+        axis([0 domainDims(1) 0 domainDims(2) 0 domainDims(3)]);
         getframe;
 end
 

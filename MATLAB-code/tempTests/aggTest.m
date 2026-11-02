@@ -78,7 +78,7 @@ params{1} = struct("N", N, "d", d, ...
         "dt", dt, "stepRecMod", -1, "rngSeed", seed, "waitForConf", false, ...
         "stepPlotMod", 10, "delayType", delayType, "stepCount", stepCount);
 params{2} = params{1};
-params{2}.dims = [2,2];
+params{2}.domainDims = [2,2];
 params{2}.N = 1600;
 
 X = cell(2,1);

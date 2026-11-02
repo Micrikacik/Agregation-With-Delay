@@ -1,4 +1,4 @@
-function [x] = applyBCs(x, boundConds, dims)
+function [x] = applyBCs(x, boundConds, domainDims)
 
 % Apply the boundary conditions on 'x'.
 % 
@@ -10,7 +10,7 @@ function [x] = applyBCs(x, boundConds, dims)
 %           "NoBoundary"
 %           "Periodic"
 %           "Reflective"
-%   dims (positive float ROW vector) - dimensions of the simulation, i.e., 
+%   domainDims (positive float ROW vector) - dimensions of the simulation, i.e., 
 %       dimensions of the box, in which the agents move.
 %       This row vector must have its length the same as is the second
 %       dimension of the matrix 'x'.
@@ -21,7 +21,7 @@ function [x] = applyBCs(x, boundConds, dims)
 arguments
     x (:,:) double
     boundConds (1,1) string
-    dims (1,:) double {mustBePositive}
+    domainDims (1,:) double {mustBePositive}
 end
 
 switch boundConds
@@ -29,10 +29,10 @@ switch boundConds
         % No BCs
     case "Periodic"
         % Periodic BCs
-        x = mod(x ,dims);
+        x = mod(x ,domainDims);
     case "Reflective"
         % Reflective BCs (local)
-        x = dims - abs(dims - abs(x));
+        x = domainDims - abs(domainDims - abs(x));
     otherwise
         error('Invalid boundary conditions.');
 end

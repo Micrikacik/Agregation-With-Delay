@@ -1,9 +1,9 @@
-function [] = plotAgg(x, theta, dims, boundConds)
+function [] = plotAgg(x, theta, domainDims, boundConds)
 
 arguments
     x
     theta = zeros(size(x,1),1)
-    dims = ones(size(x,2),1)
+    domainDims = ones(size(x,2),1)
     boundConds = "Periodic"
 end
 
@@ -12,7 +12,7 @@ end
 
 N = size(x,1);
 d = size(x,2);
-volume = prod(dims);
+volume = prod(domainDims);
 
 %identify clusters:
 
@@ -34,7 +34,7 @@ end
 switch boundConds
     case "Periodic"
         %calculate distances over the torus
-        dists = torusDistances(x,x,dims);
+        dists = torusDistances(x,x,domainDims);
     case "Reflective"
         %calculate distances
         dists = distances(x);
@@ -63,19 +63,19 @@ switch d
         scatter(x(clus_idx,1), theta(clus_idx), getPointSize()^2, colors(clus_idx,:), ".")
         scatter(x(out_idx,1), theta(out_idx), getPointSize()^2, colors(out_idx,:), "x", 'LineWidth', 3)
         hold off
-        axis([0 dims(1) 0 1]);
+        axis([0 domainDims(1) 0 1]);
     case 2
         hold on
         scatter(x(clus_idx,1), x(clus_idx,2), getPointSize()^2, colors(clus_idx,:), ".")
         scatter(x(out_idx,1), x(out_idx,2), getPointSize()^2, colors(out_idx,:), "x", 'LineWidth', 3)
         hold off
-        axis([0 dims(1) 0 dims(2)]);
+        axis([0 domainDims(1) 0 domainDims(2)]);
     case 3
         hold on
         scatter3(x(clus_idx,1), x(clus_idx,2), x(clus_idx,3), getPointSize()^2, colors(clus_idx,:), ".")
         scatter3(x(out_idx,1), x(out_idx,2), x(out_idx,3), getPointSize()^2, colors(out_idx,:), "x", 'LineWidth', 3)
         hold off
-        axis([0 dims(1) 0 dims(2) 0 dims(3)]);
+        axis([0 domainDims(1) 0 domainDims(2) 0 domainDims(3)]);
 end
 
 fontsize(getFontSize(),'points')
