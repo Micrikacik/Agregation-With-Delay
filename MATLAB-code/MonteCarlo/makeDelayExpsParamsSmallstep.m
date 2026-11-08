@@ -1,8 +1,8 @@
-function [expsParams, folderPathFunc, filePostfixFunc] = makeDelayExpsParamsSmallstep(d, tau)
+function [expsParams, folderPathFunc, filePostfixFunc] = makeDelayExpsParamsSmallstep(d, stepDelay)
 
 arguments
     d (1,1) {mustBeInteger}
-    tau (1,1)
+    stepDelay (1,1)
 end
 
 expsParams = struct( ...
@@ -16,7 +16,7 @@ expsParams = struct( ...
         "T", 1e+3, ...% FIXED
         "dt", 1e-5, ...% FIXED
         "delayType", "Reaction", ...% FIXED
-        "tau", tau, ...% FIXED
+        "stepDelay", stepDelay, ...% FIXED
         ...% No initial history controll
         "waitForConf", false, ...% FIXED
         "stepPlotMod", -2, ...% FIXED
@@ -30,8 +30,8 @@ expsParams = struct( ...
         ...% No experiment title
     );
 
-folderPathFunc = @(expParams, i_exp) smallstepMCFolderPath(expParams.delayType, expParams.d, round(expParams.tau / expParams.dt));
-filePostfixFunc = @(expParams, i_exp) smallstepMCFilePostfix(expParams.delayType, expParams.d, round(expParams.tau / expParams.dt));
+folderPathFunc = @(expParams, i_exp) smallstepMCFolderPath(expParams.delayType, expParams.d, expParams.stepDelay);
+filePostfixFunc = @(expParams, i_exp) smallstepMCFilePostfix(expParams.delayType, expParams.d, expParams.stepDelay);
 
 function folderPath =  smallstepMCFolderPath(delayType, d, stepDelay)
     folderPath = sprintf("MonteCarlo/delayType%s/%iD/smallstep/stepDelay%i", delayType, d, stepDelay);

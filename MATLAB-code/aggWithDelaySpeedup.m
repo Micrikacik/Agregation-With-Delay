@@ -405,7 +405,16 @@ if ~isfield(expParams,"stepPlotMod") || ~IsInteger(expParams.stepPlotMod) || ...
         ((expParams.stepPlotMod <= 0) && expParams.stepPlotMod ~= -1 && expParams.stepPlotMod ~= -2) || ...
         ~isscalar(expParams.stepPlotMod)
     fprintf("stepPlotMod - Either no or wrong value for the step plot mod.\n")
-    stepPlotMod = 5;  % default step plot mod
+    switch d
+        case 1
+            stepPlotMod = 2;  
+        case 2
+            stepPlotMod = 4;  
+        case 3
+            stepPlotMod = 6;  
+        otherwise
+            stepPlotMod = -1;
+    end
     fprintf("Setting stepPlotMod = %i.\n\n", stepPlotMod)
 else
     stepPlotMod = expParams.stepPlotMod;

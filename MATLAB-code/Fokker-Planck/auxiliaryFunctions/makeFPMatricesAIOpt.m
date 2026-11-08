@@ -17,6 +17,8 @@ if boundConds ~= "Periodic"
     error("Only periodic boundary conditions are currently supported.");
 end
 
+nd = numel(gridDims);
+
 if isscalar(gridDims)
     gridDims = [gridDims, 1];
 end
@@ -31,7 +33,6 @@ if length(domainDims) ~= length(gridDims)
     error("'domainDims' and 'gridDims' do not match.");
 end
 
-nd = numel(gridDims);
 N = prod(gridDims);
 K = numel(stencil);
 stencilDims = size(stencil);

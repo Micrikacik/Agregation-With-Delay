@@ -26,7 +26,7 @@ for i_exp = 1:count
     if finiteGroup
         wString = sprintf("Stacking experiment %i of %i ...", i_exp, count);
     else
-        wString = sprintf("Stacking experiment %i of %i, with unknown group count (no waitbar) ...", i_exp, count);
+        wString = sprintf("Stacking exp. %i of %i, without group count ...", i_exp, count);
     end
     waitbar(0, wBar, wString)
 

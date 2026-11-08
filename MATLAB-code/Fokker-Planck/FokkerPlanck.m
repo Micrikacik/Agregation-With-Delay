@@ -149,7 +149,7 @@ if ~isfield(expParams,"rho0") || ~isfloat(expParams.rho0) || isempty(expParams.r
                 case 2 
                     gridDims = [100, 100];
                 case 3 
-                    gridDims = [30, 30, 30];
+                    gridDims = [20, 20, 20];
                 otherwise 
                     gridDims = ones(1, d) * 10;
             end
@@ -214,8 +214,10 @@ end
 
 % Setting random initial density
 if isempty(rho)
-    flucts = makeFlucts(maxInitFlucts, N);
-    rho = 1 / volume + flucts; % it is density, so integral must be 1
+    flucts = makeFluctsSmooth(maxInitFlucts, gridDims);
+    rho = 1 / volume + reshape(flucts, [N, 1]); % it is density, so integral must be 1
+    % flucts = makeFlucts(maxInitFlucts, gridDims);
+    % rho = 1 / volume + flucts; % it is density, so integral must be 1
 end
 
 %----------------------------------MODEL------------------------------------
@@ -272,7 +274,7 @@ if ~isfield(expParams,"stepCount") || ~IsInteger(expParams.stepCount) || ...
     if ~isfield(expParams,"T") || ~isfloat(expParams.T) || expParams.T <= 0 || ...
         ~isscalar(expParams.T)
         fprintf("Either no or wrong value for the total simulation time 'T'.\n")
-        stepCount = 1000;                    % default number of time steps
+        stepCount = 2000;                    % default number of time steps
         fprintf("Setting stepCount = %i (T = %.3d).\n\n", stepCount, stepCount * dt)
     else
         stepCount = round(expParams.T / dt);
@@ -291,7 +293,17 @@ if ~isfield(expParams,"stepDelay") || ~IsInteger(expParams.stepDelay) || ...
     if ~isfield(expParams,"tau") || ~isfloat(expParams.tau) || expParams.tau < 0 || ...
         ~isscalar(expParams.tau)
         fprintf("Either no or wrong value for the delay 'tau'.\n")
-        stepDelay = 60;                    % default step delay
+        d = expParams.d;
+        switch d
+            case 1 
+                stepDelay = 90;
+            case 2 
+                stepDelay = 30;
+            case 3 
+                stepDelay = 10;
+            otherwise 
+                stepDelay = 0;
+        end
         fprintf("Setting stepDelay = %i (tau = %.3d).\n\n", stepDelay, stepDelay * dt)
     else
         stepDelay = round(expParams.tau / dt);
@@ -307,7 +319,8 @@ end
 if ~isfield(expParams,"rhoInitHist") || ~isfloat(expParams.rhoInitHist) || ...
         ~isequal(size(expParams.rhoInitHist), [gridDims, stepDelay])
     fprintf("Either no or wrong value for the matrix of initial densities 'rhoInitHist'.\n")
-    rhoHist = genRhoInitHist(maxInitFlucts, rho, stepDelay);  % default initial history
+    rhoHist = genRhoInitHistSmooth(maxInitFlucts, rho, gridDims, stepDelay);  % default initial history
+    %rhoHist = genRhoInitHist(maxInitFlucts, rho, stepDelay);  % default initial history
     fprintf("Initializing experiment with random initial density history.\n\n")
 else
     rhoHist = reshape(expParams.rhoInitHist, [N, stepDelay]); % make it into columns of a matrix
@@ -321,7 +334,16 @@ if ~isfield(expParams,"stepPlotMod") || ~IsInteger(expParams.stepPlotMod) || ...
         ((expParams.stepPlotMod <= 0) && expParams.stepPlotMod ~= -1 && expParams.stepPlotMod ~= -2) || ...
         ~isscalar(expParams.stepPlotMod)
     fprintf("Either no or wrong value for the step plot mod 'stepPlotMod'.\n")
-    stepPlotMod = 5;  % default step plot mod
+    switch d
+        case 1
+            stepPlotMod = 2;  
+        case 2
+            stepPlotMod = 4;  
+        case 3
+            stepPlotMod = 8;  
+        otherwise
+            stepPlotMod = -1;
+    end
     fprintf("Setting step plot mod to %i.\n\n", stepPlotMod)
 else
     stepPlotMod = expParams.stepPlotMod;
@@ -360,6 +382,8 @@ fprintf("Preparing variables.\n\n")
 
 % Coefficient to access history
 histCoeff = stepDelay;
+
+maxPlot = 1;
 
 % Setup VideoWriter if the simulation is recorded
 recordVideo = false;
@@ -499,7 +523,7 @@ for t = 1:stepCount
 end
 
 function plotSimStep(rho, rhoDelayed, t)
-    maxPlot = max(1.2 * max(rho));
+    maxPlot = max(1.2 * max(rho), maxPlot);
     title(sprintf("T = %d", t))
     switch d
         case 1
@@ -521,12 +545,11 @@ function plotSimStep(rho, rhoDelayed, t)
             gridY = ((1:gridDims(2)) - 0.5) * dDim(2);
             gridZ = ((1:gridDims(3)) - 0.5) * dDim(3);
             rho50prc = mean(rho);
-            rho80prc = prctile(rho,80);
             rho95prc = prctile(rho,95);
             clf
             colormap("turbo")
             isosurface(gridX, gridY, gridZ, reshape(rho, gridDims), rho50prc);
-            isosurface(gridX, gridY, gridZ, reshape(rho, gridDims), rho80prc);
+            isosurface(gridX, gridY, gridZ, reshape(rho, gridDims), 1);
             isosurface(gridX, gridY, gridZ, reshape(rho, gridDims), rho95prc);
             clim([0, maxPlot])
             colorbar("Ticks", linspace(0, maxPlot, 5))
