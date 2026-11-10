@@ -5,16 +5,16 @@ function D = distances(x_1,x_2)
 %
 % INPUT:
 %   x_1, x_2 (float matrices) - N by d matrices, each row represents
-%       position vector, 
-%       distances are calculated between vectors x_1(i,:) and x_2(j,:)
+%       position vector.
+%       Distances are calculated between vectors x_1(i,:) and x_2(j,:).
 %
 % OUTPUT:
-%   D (nonnegative float matrix) - N by N (symmetric) distance matrix,
-%       element D(i,j) is distance ||x_1(i,:) - x_2(j,:)||
+%   D (nonnegative float matrix) - N by N distance matrix.
+%       Element D(i,j) is distance ||x_1(i,:) - x_2(j,:)||
 
 arguments
-    x_1 (:,:) double
-    x_2 (:,:) double = x_1 
+    x_1 (:,:) double {mustBeFinite, mustBeNonempty, mustBeReal}
+    x_2 (:,:) double {mustBeFinite, mustBeNonempty, mustBeReal} = x_1 
 end
 
 if size(x_2) ~= size(x_1)

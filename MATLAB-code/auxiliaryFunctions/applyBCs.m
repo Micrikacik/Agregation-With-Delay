@@ -3,15 +3,15 @@ function [x] = applyBCs(x, boundConds, domainDims)
 % Apply the boundary conditions on 'x'.
 % 
 % INPUT:
-%   x (float matrix) - matrix of initial positions.
-%       x(i,:) - position (float vector) in d-dim torus of the i-th agent.
+%   x (float matrix) - matrix of positions.
+%       x(i,:) - position (float vector) in d-dim of the i-th agent.
 %   boundConds (string) - type of the boundary conditions.
 %       Must be one of the following strings:
 %           "NoBoundary"
 %           "Periodic"
 %           "Reflective"
-%   domainDims (positive float ROW vector) - dimensions of the simulation, i.e., 
-%       dimensions of the box, in which the agents move.
+%   domainDims (positive float vector) - dimensions of the simulation, 
+%       i.e., dimensions of the box, in which the agents move.
 %       This row vector must have its length the same as is the second
 %       dimension of the matrix 'x'.
 %
@@ -19,9 +19,13 @@ function [x] = applyBCs(x, boundConds, domainDims)
 %   x (float matrix) - the input 'x' on which BCs were applied.
 
 arguments
-    x (:,:) double
+    x (:,:) double {mustBeFinite, mustBeNonempty, mustBeReal}
     boundConds (1,1) string
-    domainDims (1,:) double {mustBePositive}
+    domainDims (1,:) double {mustBeFinite, mustBeReal, mustBePositive}
+end
+
+if size(x, 2) ~= length(domainDims)
+    error("Input 'domainDims' has wrong size, which does not correspond to 'x'.")
 end
 
 switch boundConds
@@ -29,7 +33,7 @@ switch boundConds
         % No BCs
     case "Periodic"
         % Periodic BCs
-        x = mod(x ,domainDims);
+        x = mod(x, domainDims);
     case "Reflective"
         % Reflective BCs (local)
         x = domainDims - abs(domainDims - abs(x));

@@ -675,7 +675,7 @@ if stepPlotMod ~= -2
 
     fprintf("----------------------------------\n\n")
     fprintf("Plotting agregation groups.\n\n")
-    plotAgg(x,theta,ones(1,d),boundConds)
+    plotAgg(x,theta,boundConds)
 end
 
 end

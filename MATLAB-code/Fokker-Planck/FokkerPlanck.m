@@ -523,7 +523,7 @@ for t = 1:stepCount
 end
 
 function plotSimStep(rho, rhoDelayed, t)
-    maxPlot = max(1.2 * max(rho), maxPlot);
+    maxPlot = max(maxPlot, max(rho) * getMaxPlotMultip());
     title(sprintf("T = %d", t))
     switch d
         case 1

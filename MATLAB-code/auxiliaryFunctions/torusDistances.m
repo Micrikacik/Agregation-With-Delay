@@ -1,12 +1,28 @@
-function D = torusDistances(x_1,x_2,domainDims)
-% x_1, x_2 are Nxd, all d coordinates of all N agents in domainDims
-% D will be NxN (symmetric) distance matrix on the torus with dimensions
-% defined by domainDims
+function D = torusDistances(x_1, x_2, domainDims)
+
+% Calculates euclidian distances on torus with dimensions 'domainDims' 
+% (as a periodic hypercube) between the positions in 'x_1' and 'x_2',
+% returning a distance matrix 'D'.
+%
+% INPUT:
+%   x_1, x_2 (float matrices) - N by d matrices, each row represents
+%       position vector.
+%       Distances are calculated between vectors x_1(i,:) and x_2(j,:).
+%   domainDims (float vector) - vector of length d (second dimension of 
+%       'x_1, x_2'), values represent dimensions of the torus (as a 
+%       periodic hypercube), i.e. 'domainDims(i)' is the length of the 
+%       hypercube in the i-th dimension.
+%       
+% OUTPUT:
+%   D (nonnegative float matrix) - N by N distance matrix.
+%       Element D(i,j) is distance on torus with dimensions 'domainDims'.
+
 
 arguments
-    x_1 
-    x_2 = x_1
-    domainDims = ones(size(x_1,2),1)
+    x_1 (:,:) double {mustBeFinite, mustBeNonempty, mustBeReal}
+    x_2 (:,:) double {mustBeFinite, mustBeNonempty, mustBeReal} = x_1 
+    domainDims (1,:) double {mustBeFinite, mustBeReal, mustBePositive} = ones(1, size(x_1, 2))
+
 end
 
 % Initialize the matrices
@@ -25,6 +41,6 @@ b_mat(1,1,:) = domainDims;
 x_diff = min(x_diff, b_mat - x_diff);
 
 % Euclidean distance
-D = sqrt(sum(x_diff.^2,3));
+D = sqrt(sum(x_diff.^2, 3));
 
 end

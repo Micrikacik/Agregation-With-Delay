@@ -1,8 +1,8 @@
 function D = torusDistancesSqrd(x_1, x_2, domainDims)
 
-% Calculates euclidian distances SQUARED on torus with dimensions 'domainDims'
-% (as a periodic hypercube) between the positions in 'x_1' and 'x_2', 
-% returning a distance matrix 'D'.
+% Calculates euclidian distances SQUARED on torus with dimensions 
+% 'domainDims' (as a periodic hypercube) between the positions in 'x_1' and
+% 'x_2', returning a 'D' of SQUARED torus distances.
 % This function is fast implementation of torusDistances.m, but needs 
 % special output usage (returns SQUARED distances).
 %
@@ -11,19 +11,19 @@ function D = torusDistancesSqrd(x_1, x_2, domainDims)
 %       position vector.
 %       Distances are calculated between vectors x_1(i,:) and x_2(j,:).
 %   domainDims (float vector) - vector of length d (second dimension of 
-%       'x_1, x_2'), values represent dimensions of the torus (as a periodic 
-%       hypercube), i.e. 'domainDims(i)' is the length of the hypercube in the i-th
-%       dimension.
+%       'x_1, x_2'), values represent dimensions of the torus (as a 
+%       periodic hypercube), i.e. 'domainDims(i)' is the length of the 
+%       hypercube in the i-th dimension.
 %       
 % OUTPUT:
-%   D (nonnegative float matrix) - N by N (symmetric) distance matrix,
-%       element D(i,j) is SQUARED distance on torus with dimensions 'domainDims'
-%       "||x_1(i,:) - x_2(j,:)||^2"
+%   D (nonnegative float matrix) - N by N distance matrix.
+%       Element D(i,j) is SQUARED distance on torus with dimensions 
+%       'domainDims' ||x_1(i,:) - x_2(j,:)||^2
 
 arguments
-    x_1 (:,:) double
-    x_2 (:,:) double = x_1 
-    domainDims = ones(1, size(x_1, 2))
+    x_1 (:,:) double {mustBeFinite, mustBeNonempty, mustBeReal}
+    x_2 (:,:) double {mustBeFinite, mustBeNonempty, mustBeReal} = x_1 
+    domainDims (1,:) double {mustBeFinite, mustBeReal, mustBePositive} = ones(1, size(x_1, 2))
 end
 
 if size(x_1) ~= size(x_2)
@@ -32,8 +32,8 @@ end
 
 d = size(x_1, 2);
 
-if d > 3
-    error("Dimension %i not supported.", d)
+if d ~= length(domainDims)
+    error("Input 'domainDims' has wrong size, which does not correspond to 'x_1'.")
 end
 
 switch d

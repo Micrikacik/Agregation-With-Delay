@@ -25,19 +25,10 @@ freqAddup = zeros(gridDims);
 
 for d = 1:nd
     c = centralFreqs(d);
-    freqAddup = freqAddup + F{d} / max(c,1)^2 - c^2;
+    freqAddup = freqAddup + F{d} / max(c^2, 1);
 end
 
-% id = num2cell(centralFreqs + 1);
-% freqAddup(id{:}) = 1;
-
-figure
-imagesc(freqAddup)
-
-% Gaussian low-pass filter
-H = 1 ./ (abs(freqAddup) + 1);
-figure
-imagesc(H)
+H = 1 ./ (abs(freqAddup - 1) + 1);
 
 % Filter in frequency domain
 noise = real(ifftn(fftn(whiteNoise).*H));

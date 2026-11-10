@@ -1,11 +1,12 @@
 function [intRad] = getIntRad(d)
 
 % Calculates the radius of a d-ball, such that its d-volume is equal to the
-% area of a circle with a radius 0.05
+% area of a circle with a radius 0.05. This value is the default intRad
+% used in the simulations.
 % 
 % INPUT:
 %   d (positive integer array) - dimension/s, for which to calculate the
-%       radius
+%       radius.
 %
 % OUTPUT:
 %   intRad (positive float array) - radius of a d-ball with the volume 
@@ -13,7 +14,7 @@ function [intRad] = getIntRad(d)
 %       are the same as of the input 'd'
 
 arguments
-    d double {mustBeInteger, mustBePositive}
+    d double {mustBeInteger, mustBePositive, mustBeReal, mustBeFinite}
 end
 
 base2DIntRad = 0.05;                                    % interaction radius in 2D

@@ -1,40 +1,52 @@
-function [] = plotAgg(x, theta, domainDims, boundConds)
+function plotAgg(x, theta, boundConds, domainDims)
+
+% Plots the agents in a new figure and highligts agregation.
+%
+% INPUT:
+%   x (float matrix) - matrix of positions.
+%       x(i,:) - position (float vector) in d-dim of the i-th agent.
+%   theta (float nonnegative vector) - vector of densities 'theta'
+%       corresponding to the agents with positions in rows of 'x'.
+%   boundConds (string) - type of the boundary conditions.
+%       Must be one of the following strings:
+%           "NoBoundary"
+%           "Periodic"
+%           "Reflective"
+%   domainDims (positive float vector) - dimensions of the simulation, 
+%       i.e., dimensions of the box, in which the agents move.
+%       This row vector must have its length the same as is the second
+%       dimension of the matrix 'x'.
 
 arguments
-    x
-    theta = zeros(size(x,1),1)
-    domainDims = ones(size(x,2),1)
-    boundConds = "Periodic"
+    x (:,:) double {mustBeFinite, mustBeNonempty, mustBeReal}
+    theta (:,1) double {mustBeFinite, mustBeNonempty, mustBeReal, mustBeNonnegative} ...
+        = zeros(size(x,1),1)
+    boundConds (1,1) string = ones(size(x,2),1)
+    domainDims (1,:) double {mustBeFinite, mustBeReal, mustBePositive} ...
+        = "Periodic"
 end
-
-% Plots the agents and highligts agregation
-% Supports dimensions 1, 2, 3
 
 N = size(x,1);
 d = size(x,2);
+
+if d > 3
+    error("Dimension %i not supported for plots.", d)
+end
+if ~isequal(size(theta), [N,1])
+    error("Input 'theta' has wrong size, which does not correspond to 'x'.")
+end
+if d ~= length(domainDims)
+    error("Input 'domainDims' has wrong size, which does not correspond to 'x'.")
+end
+
 volume = prod(domainDims);
 
 %identify clusters:
 
-%parameter setting for DBSCAN method
-switch d
-    case 1
-        %epsilon = 0.7/20;
-        %minpts = 14;
-    case 2
-        %epsilon = 1/20;
-        %minpts = 12;
-    case 3
-        %epsilon = 1.8/20;
-        %minpts = 9;
-    otherwise
-        error('Invalid number of dimensions. Only 1, 2, or 3 are supported.');
-end
-
 switch boundConds
     case "Periodic"
         %calculate distances over the torus
-        dists = torusDistances(x,x,domainDims);
+        dists = torusDistances(x, x, domainDims);
     case "Reflective"
         %calculate distances
         dists = distances(x);
@@ -63,7 +75,7 @@ switch d
         scatter(x(clus_idx,1), theta(clus_idx), getPointSize()^2, colors(clus_idx,:), ".")
         scatter(x(out_idx,1), theta(out_idx), getPointSize()^2, colors(out_idx,:), "x", 'LineWidth', 3)
         hold off
-        axis([0 domainDims(1) 0 1]);
+        axis([0 domainDims(1) 0 (max(theta)*getMaxPlotMultip())]);
     case 2
         hold on
         scatter(x(clus_idx,1), x(clus_idx,2), getPointSize()^2, colors(clus_idx,:), ".")

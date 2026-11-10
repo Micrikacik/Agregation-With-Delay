@@ -608,7 +608,7 @@ if stepPlotMod ~= -2
 
     fprintf("----------------------------------\n\n")
     fprintf("Plotting agregation groups.\n\n")
-    plotAgg(x,theta./(W_max*volume),domainDims,boundConds)
+    plotAgg(x,theta./(W_max*volume),boundConds,domainDims)
 end
 
 end
