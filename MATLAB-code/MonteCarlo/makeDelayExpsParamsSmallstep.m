@@ -19,7 +19,7 @@ expsParams = struct( ...
         "stepDelay", stepDelay, ...% FIXED
         ...% No initial history controll
         "waitForConf", false, ...% FIXED
-        "stepPlotMod", -2, ...% FIXED
+        "stepPlotMod", -1, ...% FIXED
         ...% No agent marking
         ...% No color for agent marking
         "stepRecMod", -1, ...% FIXED

@@ -26,8 +26,6 @@ function [xRec, thetaRec, thetaOccur, xHist, rngSetts] = aggWithDelaySpeedup(exp
 %           'domainDims'.
 %           Alternatively, set 'd'. In that case 'ones(1,d)' will be set as
 %           dimensions of the domain
-%       d (positive integer) - dimension.
-%           Alternative to 'domainDims'.
 %       x0 (float matrix) - matrix of initial positions.
 %           x(i,:) - position (float vector) of the i-th agent. Positions
 %           should be contained within the box defined by 'domainDims'.
@@ -40,8 +38,11 @@ function [xRec, thetaRec, thetaOccur, xHist, rngSetts] = aggWithDelaySpeedup(exp
 %           Alternatively, set the dimension 'd', the number of
 %           agents 'N' and the step delay 'stepDelay'. In that case, random
 %           'blind motion' will be generated as the initial history.
+%           'xInitHist' can be N by d by 0 matrix, simulation no delay. 
 %       N (positive integer) - number of agents.
 %           Alternative to 'x0' and 'xInitHist'.
+%       d (positive integer) - dimension.
+%           Alternative to 'domainDims' and 'x0'.
 %
 %       MODEL:
 %       intRad (positive float) - radius of interactions between agents.
@@ -56,7 +57,8 @@ function [xRec, thetaRec, thetaOccur, xHist, rngSetts] = aggWithDelaySpeedup(exp
 %       dt (positive float) - time step length.
 %       stepCount (positive integer) - number of time steps.
 %           Alternatively, set the total time 'T'. In that case,
-%           'round(T / dt)' will be set as step count.
+%           'round(T / dt)' will be set as step count. If the rounded
+%           value is 0, then step count will be 1.
 %       T (positive float) - total time of the simulation.
 %           Alternative to 'stepCount'.
 %       delayType (string) - type of the delay.
@@ -81,6 +83,7 @@ function [xRec, thetaRec, thetaOccur, xHist, rngSetts] = aggWithDelaySpeedup(exp
 %           The plots are shown in movie-like sense. 
 %           If 'stepPlotMod > 0', then the initial conditions are plotted
 %           as well.
+%           Plottingg is not available for 'd > 3'.
 %       plotLastAgg (logical) - if true, then the last step of the simulation
 %           is plotted together with detected clusters.
 %           If no value is specified and 'stepPlotMod > 0', then it will
@@ -110,7 +113,7 @@ function [xRec, thetaRec, thetaOccur, xHist, rngSetts] = aggWithDelaySpeedup(exp
 %       recInitTheta (logical) - if true, then the initial density vector 
 %           (theta) and its delayed value are recorded to 
 %           'thetaRec(:,:,1)'. 
-%           If no value is specified and 'recInitTheta > 0', then it will
+%           If no value is specified and 'thetaRecMod > 0', then it will
 %           be set 'recInitTheta = true'.
 %       thetaOccurMod (positive integer or -1) - simulation records the 
 %           occurances of agents with specific numbers of actual neighbours 
@@ -159,7 +162,8 @@ function [xRec, thetaRec, thetaOccur, xHist, rngSetts] = aggWithDelaySpeedup(exp
 %       The shift means that, e.g., '(1,1)' represents '(0,0)'.
 %       Element 'thetaOccur(i,j)' is then the number of ocurrences of any
 %       agent, who had 'i-1' actual neighbours and 'j-1' delayed 
-%       neighbours, in any step which was recorded based on 'thetaRecMod'.
+%       neighbours, in any step which was recorded based on 
+%       'thetaOccurMod'.
 %   xHist (float matrix) - 3 dimensional matrix of the last history of
 %       positions, which still affects the following simulation steps.
 %       Its dimensions are '[N,d,stepDelay]'. It can be directly plugged in
@@ -177,39 +181,41 @@ end
 %--------------------------------------------------------------------------
 %--------------------------------------------------------------------------
 
-fprintf("----------------------------------\n\n")
+fprintf(outputDivider())
 
 fprintf("Initializing the experiment: Agregation with delay.\n\n")
 
-fprintf("----------------------------------\n\n")
+fprintf(outputDivider())
+
 
 function result = IsAllModInteger(x)
-    result = IsAllInteger(x) && all((x > 0) | (x == -1));
+    result = IsAllInteger(x) && all((x > 0) | (x == -1), "all");
 end
 
 function result = IsAllNonnegInteger(x)
-    result = IsAllInteger(x) && all(x >= 0);
+    result = IsAllInteger(x) && all(x >= 0, "all");
 end
 
 function result = IsAllPosInteger(x)
-    result = IsAllInteger(x) && all(x > 0);
+    result = IsAllInteger(x) && all(x > 0, "all");
 end
 
 function result = IsAllInteger(x)
-    result = IsAllReal(x) && all(x == floor(x));
+    result = IsAllReal(x) && all(x == floor(x), "all");
 end
 
 function result = IsAllNonnegReal(x)
-    result = IsAllReal(x) && all(x >= 0);
+    result = IsAllReal(x) && all(x >= 0, "all");
 end
 
 function result = IsAllPosReal(x)
-    result = IsAllReal(x) && all(x > 0);
+    result = IsAllReal(x) && all(x > 0, "all");
 end
 
 function result = IsAllReal(x)
-    result = isnumeric(x) && isreal(x) && all(isfinite(x));
+    result = isnumeric(x) && isreal(x) && all(isfinite(x), "all");
 end
+
 
 % Set or initialize experiment parameters ---------------------------------
 
@@ -235,58 +241,71 @@ end
 
 %-----------------------SPACE-&-INITIAL-CONDITIONS-------------------------
 
-% Dimension & dimensions
+N = [];
+d = [];
+
+% Domain dimensions
 if ~isfield(expParams, "domainDims") || ~isvector(expParams.domainDims) || ...
         ~IsAllPosReal(expParams.domainDims)
     fprintf("domainDims - Either no or wrong value for the vector of dimensions.\n")
-    fprintf("Looking for the input value for 'd'.\n")
-    if ~isfield(expParams,"d") || ~isscalar(expParams.d) || ~IsAllPosInteger(expParams.d)
-        fprintf("   d - Either no or wrong value for the dimension.\n")
-        d = 2;                  % default dimension of the space
-        fprintf("   Setting d = %i.\n", d);
-    else
-        d = double(expParams.d);
-        fprintf("   d = %i.\n", d)
-    end
-    domainDims = ones(1,d);     % default dimensions
-    fprintf("Setting domainDims:")
-    disp(domainDims)
-else 
+    domainDims = [];     % default dimensions will be set later
+    fprintf("Setting all domain dimensions to 1.\n\n")
+else    
     domainDims = double(expParams.domainDims(:).');
-    d = size(domainDims, 2);
+    d = length(domainDims);
     fprintf("domainDims:")
     disp(domainDims)
 end
-volume = prod(domainDims);
 
-% Initial positions & number of agents
+% Initial positions
 if ~isfield(expParams,"x0") || ~IsAllReal(expParams.x0) || isempty(expParams.x0) || ...
-        ~ismatrix(expParams.x0) || size(expParams.x0, 2) ~= d
+        ~ismatrix(expParams.x0) || ...
+        (~isempty(d) && ~isequal(size(expParams.x0, 2), d))
     fprintf("x0 - Either no or wrong value for the matrix of initial positions.\n")
-    fprintf("Looking for the input value for 'N'.\n")
-    fprintf('   |\n')
-    if ~isfield(expParams,"N") || ~isscalar(expParams.N) || ~IsAllPosInteger(expParams.N)
-        fprintf("   N - Either no or wrong value for the number of agents.\n")
-        N = 400;                % default number of particles
-        fprintf("   Setting N = %i.\n", N);
-    else
-        N = double(expParams.N);
-        fprintf("   N = %i.\n", N)
-    end
-    fprintf('   |\n')
-    fprintf("Initializing random experiment with N = %i, d = %i.\n\n", N, d);
+    fprintf("Initializing random experiment.\n\n");
     x = []; % we will set the initial position later as a random matrix
 else
     x = double(expParams.x0);
-    N = size(x,1);
+    N = size(x, 1);
+    d = size(x, 2);
     fprintf("x0 accepted, N = %i, d = %i.\n\n", N, d)
 end
+
+% Number of agents (if not inferred)
+if isempty(N)
+    if ~isfield(expParams,"N") || ~isscalar(expParams.N) || ~IsAllPosInteger(expParams.N)
+        fprintf("N - Either no or wrong value for the number of agents.\n")
+        N = 400;                % default number of particles
+        fprintf("Setting N = %i.\n", N);
+    else
+        N = double(expParams.N);
+        fprintf("N = %i.\n", N)
+    end
+end
+
+% Dimension (if not inferred)
+if isempty(d)
+    if ~isfield(expParams,"d") || ~isscalar(expParams.d) || ~IsAllPosInteger(expParams.d)
+        fprintf("d - Either no or wrong value for the dimension.\n")
+        d = 2;                  % default dimension of the space
+        fprintf("Setting d = %i.\n", d);
+    else
+        d = double(expParams.d);
+        fprintf("d = %i.\n", d)
+    end
+end
+
+% Set default domainDims
+if isempty(domainDims)
+    domainDims = ones(1, d);    % default domainDims
+end
+volume = prod(domainDims);
 
 % Initial history of positions
 if ~isempty(x)
     if ~isfield(expParams, "xInitHist") || ~IsAllReal(expParams.xInitHist) || ...
             size(expParams.xInitHist, 1) ~= N || size(expParams.xInitHist, 2) ~= d || ...
-            (isempty(expParams.xInitHist) && ndims(expParams.xInitHist) ~= 3) || ... % check that it is empty only when it is 3d = no delay defined => can accept
+            (isempty(expParams.xInitHist) && ndims(expParams.xInitHist) ~= 3) || ... % check that it is empty only when it is 3d = no delay defined => can accept (means stepDelay = 0)
             ndims(expParams.xInitHist) > 3
         fprintf("xInitHist - Either no or wrong value for the matrix of initial history of positions.\n")
         xHist = [];  % default initial history will be made after stepDelay
@@ -297,7 +316,7 @@ if ~isempty(x)
     end
 else % It does not make sense to have a history for unknown initial conditions
     xHist = [];
-    fprintf("xInitHist ignored, since 'x0' was not specified")
+    fprintf("xInitHist ignored, since 'x0' was not specified.\n\n")
 end
 
 % Setting random initial positions
@@ -331,9 +350,8 @@ else
     fprintf("rd = %.3e\n\n", rd)
 end
 
-definedBoundConds = ["NoBoundary", "Periodic", "Reflective"];
-
 % Boundary conditions
+definedBoundConds = ["NoBoundary", "Periodic", "Reflective"];
 if ~isfield(expParams, "boundConds") || ~isscalar(expParams.boundConds) || ...
         ~isstring(expParams.boundConds) || ~ismember(expParams.boundConds, definedBoundConds)     
     fprintf("boundConds - Either no or wrong value for the boundary conditions.\n")
@@ -362,7 +380,7 @@ if ~isfield(expParams, "stepCount") || ~isscalar(expParams.stepCount) || ...
     if ~isfield(expParams,"T") || ~isscalar(expParams.T) || ~IsAllPosReal(expParams.T)
         fprintf("stepCount (T) - Either no or wrong value for both the number of time steps" + ...
             " and the total simulation time.\n")
-        stepCount = 1000;                    % default number of time steps
+        stepCount = 2000;                    % default number of time steps
         fprintf("Setting stepCount = %i (T = %.3e).\n\n", stepCount, stepCount * dt)
     else
         stepCount = round(double(expParams.T) / dt);
@@ -435,27 +453,36 @@ end
 
 %----------------------------------USER------------------------------------
 
-% Step plot mod
-if ~isfield(expParams,"stepPlotMod") || ~isscalar(expParams.stepPlotMod) || ...
-        ~IsAllModInteger(expParams.stepPlotMod)
-    fprintf("stepPlotMod - Either no or wrong value for the step plot mod.\n")
-    stepPlotMod = getStepPlotMod(d);
-    fprintf("Setting stepPlotMod = %i.\n\n", stepPlotMod)
-else
-    stepPlotMod = expParams.stepPlotMod;
-    fprintf("stepPlotMod: %i.\n\n", stepPlotMod)
-end
+% Plot only for supported dimensions
+if d <= 3
 
-% Plot aggregation
-if ~isfield(expParams, "plotLastAgg") || ~isscalar(expParams.plotLastAgg) || ...
-        ~islogical(expParams.plotLastAgg)
-    if stepPlotMod > 0
-        plotLastAgg = true;
+    % Step plot mod
+    if ~isfield(expParams,"stepPlotMod") || ~isscalar(expParams.stepPlotMod) || ...
+            ~IsAllModInteger(expParams.stepPlotMod)
+        fprintf("stepPlotMod - Either no or wrong value for the step plot mod.\n")
+        stepPlotMod = getStepPlotMod(d);
+        fprintf("Setting stepPlotMod = %i.\n\n", stepPlotMod)
     else
-        plotLastAgg = false;
+        stepPlotMod = expParams.stepPlotMod;
+        fprintf("stepPlotMod: %i.\n\n", stepPlotMod)
     end
+
+    % Plot aggregation
+    if ~isfield(expParams, "plotLastAgg") || ~isscalar(expParams.plotLastAgg) || ...
+            ~islogical(expParams.plotLastAgg)
+        if stepPlotMod > 0
+            plotLastAgg = true;
+        else
+            plotLastAgg = false;
+        end
+    else
+        plotLastAgg = expParams.plotLastAgg;
+    end
+
 else
-    plotLastAgg = expParams.plotLastAgg;
+    stepPlotMod = -1;
+    plotLastAgg = false;
+    fprintf("Dimension larger than 3 detected. Forcing stepPlotMod = %i, plotLastAgg = %i.\n\n", stepPlotMod, plotLastAgg)
 end
 
 if stepPlotMod > 0
@@ -475,8 +502,8 @@ if stepPlotMod > 0
     end
     
     % Marked agents colors
-    if ~isfield(expParams,"markColors") || ~IsAllPosReal(expParams.markColors) || ...
-            ~all(expParams.markColors <= 1) || ...
+    if ~isfield(expParams,"markColors") || ~IsAllNonnegReal(expParams.markColors) || ...
+            ~all(expParams.markColors <= 1, "all") || ...
             ~isequal(size(expParams.markColors), [length(markAgents), 3])
         fprintf("markAgents - Either no or wrong value for the marked agents colors.\n")
         markColors = repmat([1,0,0], [length(markAgents),1]);
@@ -562,7 +589,7 @@ end
 
 % Video path
 if ~isfield(expParams, "videoPath") || ~isscalar(expParams.videoPath) || ...
-        ~isstring(expParams.videoPath)
+        ~isstring(expParams.videoPath) || strlength(expParams.videoPath) == 0
     videoPath = [];
 else
     videoPath = expParams.videoPath;
@@ -582,10 +609,17 @@ end
 %--------------------------------------------------------------------------
 
 
+if waitForConf
+    fprintf(outputDivider())
+    fprintf("Press any key to confirm input.\n\n")
+    pause
+end
+
+
 % Set auxiliary variables -------------------------------------------------
 
 
-fprintf("----------------------------------\n\n")
+fprintf(outputDivider())
 
 fprintf("Preparing inner variables.\n\n")
 
@@ -616,6 +650,8 @@ else
     fprintf("NO video recording.\n\n")
 end
 
+maxPlot = 0;
+
 % Make new figure if simulation is plotted and plot initial positions
 if stepPlotMod > 0
     figure
@@ -625,20 +661,17 @@ if stepPlotMod > 0
     plotSimStep(theta)
 end
 
-maxPlot = 0;
-
 
 % Set output variables ----------------------------------------------------
 
 
-fprintf("----------------------------------\n\n")
+fprintf(outputDivider())
 
 fprintf("Preparing output variables.\n\n")
 
 
 % Auxiliary function to determine the count of to be recorded steps
 function count = getRecCount(module)
-    % We want to record
     if module > 0
         count = ceil(stepCount / module);
         if count == 0
@@ -683,7 +716,6 @@ end
 % Setup to count occurances
 thetaOccur = zeros(N+1,N+1);    % 0 <= number of neighbours <= N (N + 1 due to possible zero neighbours in Transmission type delay)
 
-
 % Count initial occurances (so the edge case stepCount = 0 works properly)
 if countInitThetaOccur
     fprintf("Recording initial theta occurances.\n\n")
@@ -703,7 +735,7 @@ memorizable = (delayType == "Reaction");
 % If the delayType is 'Reaction', we can save some calculations
 % on recording theta and incrementing thetaOccur
 if memorizable
-    fprintf("----------------------------------\n\n")
+    fprintf(outputDivider())
     fprintf("Using memorization for speedup.\n\n")
     intCountsHist = zeros(N, stepDelay);
     % Initialize the intCounts history from the initial history of x
@@ -719,14 +751,7 @@ end
 %---------------------------------------------------------------------------
 
 
-if waitForConf
-    fprintf("----------------------------------\n\n")
-    fprintf("Press any key to start the simulation.\n\n")
-    pause
-end
-
-
-fprintf("----------------------------------\n\n")
+fprintf(outputDivider())
 fprintf("Starting the simulation")
 printTitle()
 fprintf(".\n\n")
@@ -823,7 +848,7 @@ for t = 1:stepCount
 
     % Record simulation step
     if t < stepCount % Last step is recorded after this loop (since we could get mod(stepCount,stepRecMod) ~= 0, so we record it specially after the loop)
-        if stepRecMod ~= -1 && mod(t,stepRecMod) == 0
+        if stepRecMod ~= -1 && mod(t, stepRecMod) == 0
             xRec(:,:,xRecIndex) = x;
             xRecIndex = xRecIndex + 1;
         end
@@ -907,7 +932,12 @@ function intCounts = getIntCountsFromDSqrd(DSqrd)
 end
 
 
-% Finish
+%--------------------------------------------------------------------------
+%--------------------------------------------------------------------------
+%--------------------------------------------------------------------------
+
+
+% Finish ------------------------------------------------------------------
 
 % Close video writer
 if recordVideo
@@ -938,25 +968,26 @@ xHist = xHist(:,:,permutation);
 % Return random generator settings
 rngSetts = rng;
 
-fprintf("----------------------------------\n\n")
+fprintf(outputDivider())
 fprintf("Simulation")
 printTitle()
 fprintf(" finished.\n\n")
-
-if plotLastAgg
-    % We need to update theta for the last plot
-    DSqrd = getDistsSqrd(x,x);
-    theta = getTheta(DSqrd);
-
-    fprintf("----------------------------------\n\n")
-    fprintf("Plotting agregation groups.\n\n")
-    plotAgg(x, theta * W_norm / volume, boundConds, domainDims)
-end
 
 function printTitle()
     if isfield(expParams,"expTitle") && isstring(expParams.expTitle) && isscalar(expParams.expTitle)
     fprintf(" titled %s", expParams.expTitle)
     end
+end
+
+% Plot aggregation
+if plotLastAgg
+    % We need to update theta for the last plot
+    DSqrd = getDistsSqrd(x,x);
+    theta = getTheta(DSqrd);
+
+    fprintf(outputDivider())
+    fprintf("Plotting agregation groups.\n\n")
+    plotAgg(x, theta * W_norm / volume, boundConds, domainDims)
 end
         
 

@@ -1,4 +1,4 @@
-function [A, distM] = makeFPMatricesAIOpt(gridDims, boundConds, domainDims, stencil)
+function [A, distM] = makeFPMatricesOpt(gridDims, boundConds, domainDims, stencil)
 %
 % THIS FUNCTION WAS MADE BY OPTIMIZING AUTHORS FUNCTION BY AI TO BE FASTER
 %

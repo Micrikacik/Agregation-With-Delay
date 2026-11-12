@@ -1,5 +1,5 @@
 rng('shuffle')
-p.stepPlotMod = -2;
+p.stepPlotMod = -1;
 p.waitForConf = false;
 p.stepCount = 14;
 q = p;

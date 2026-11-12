@@ -89,31 +89,65 @@ end
 %---------------------------------------------------------------------------
 
 
-fprintf("----------------------------------\n\n")
+fprintf(outputDivider())
 
 fprintf("Initializing the experiment: Agregation with delay - Fokker-Planck.\n\n")
 
-fprintf("----------------------------------\n\n")
+fprintf(outputDivider())
 
-function result =  IsInteger(x)
-    result = isnumeric(x) && all(x == floor(x));
+
+function result = IsAllModInteger(x)
+    result = IsAllInteger(x) && all((x > 0) | (x == -1), "all");
 end
+
+function result = IsAllNonnegInteger(x)
+    result = IsAllInteger(x) && all(x >= 0, "all");
+end
+
+function result = IsAllPosInteger(x)
+    result = IsAllInteger(x) && all(x > 0, "all");
+end
+
+function result = IsAllInteger(x)
+    result = IsAllReal(x) && all(x == floor(x), "all");
+end
+
+function result = IsAllNonnegReal(x)
+    result = IsAllReal(x) && all(x >= 0, "all");
+end
+
+function result = IsAllPosReal(x)
+    result = IsAllReal(x) && all(x > 0, "all");
+end
+
+function result = IsAllReal(x)
+    result = isnumeric(x) && isreal(x) && all(isfinite(x), "all");
+end
+
+function result = ArrayDim(x)
+    result = ndims(x);
+    if isvector(x)
+        result = 1;
+    end
+end
+
 
 % Set or initialize experiment parameters
 
 %---------------------------------RNG---------------------------------------
 
 % Random generator settings for continuation of experiment
-if ~isfield(expParams,"rngSetts") || ~isstruct(expParams.rngSetts)
+if ~isfield(expParams,"rngSetts") || ~isscalar(expParams.rngSetts) || ...
+        ~isstruct(expParams.rngSetts)
     % We do not have all settings, so we check just the seed
     % Rng seed for replicable experiment
-    if ~isfield(expParams,"rngSeed") || ~IsInteger(expParams.rngSeed) || expParams.rngSeed < 0 || ...
-            ~isscalar(expParams.rngSeed)
-        fprintf("Either no or wrong value for the rng seed 'rngSeed'.\n")
+    if ~isfield(expParams,"rngSeed") || ~isscalar(expParams.rngSeed) || ...
+            ~IsAllNonnegInteger(expParams.rngSeed)
+        fprintf("rngSeed - Either no or wrong value for the rng seed.\n")
         fprintf("Randomness is uncontrolled.\n\n")
     else
         rng(expParams.rngSeed)
-        fprintf("rngSeed: %i.\n\n", expParams.rngSeed)
+        fprintf("rngSeed = %i.\n\n", expParams.rngSeed)
     end
 else
     rng(expParams.rngSetts)
@@ -122,55 +156,34 @@ end
 
 %-----------------------SPACE-&-INITIAL-CONDITIONS------------------------
 
+gridDims = [];
+d = [];
+
+% Domain dimensions
+if ~isfield(expParams, "domainDims") || ~isvector(expParams.domainDims) || ...
+        ~IsAllPosReal(expParams.domainDims)
+    fprintf("domainDims - Either no or wrong value for the vector of dimensions.\n")
+    domainDims = [];     % default dimensions will be set later
+    fprintf("Setting all domain dimensions to 1.\n\n")
+else    
+    domainDims = double(expParams.domainDims(:).');
+    d = length(domainDims);
+    fprintf("domainDims:")
+    disp(domainDims)
+end
+
 % Initial density, grid dimensions and dimension
-if ~isfield(expParams,"rho0") || ~isfloat(expParams.rho0) || isempty(expParams.rho0)
-    fprintf("Either no or wrong value for the matrix of initial density 'rho0'.\n")
-    fprintf("Looking for the input value for 'gridDims'.\n")
-    fprintf('   |\n')
-    % Look for gridDims
-    if ~isfield(expParams,"gridDims") || ~IsInteger(expParams.gridDims) || ...
-            any(expParams.gridDims <= 0) || ~isrow(expParams.gridDims)
-        fprintf("   Either no or wrong value for the grid dimensions 'gridDims'.\n")
-        fprintf("   Looking for the input value for 'd'.\n")
-        fprintf('       |\n')
-        % Look for d
-        if ~isfield(expParams,"d") || ~isfloat(expParams.d) || ...
-            expParams.d <= 0 || ~isscalar(expParams.d) || ~IsInteger(expParams.d)
-            fprintf("       Either no or wrong value for the dimension 'd'.\n")
-            d = 1;                          % default d
-            gridDims = 10000;                 % default gridDims
-            fprintf("       Setting 1D simulation with gridDims = %i.\n", gridDims);
-        % Found d
-        else
-            d = expParams.d;
-            switch d
-                case 1 
-                    gridDims = 10000;
-                case 2 
-                    gridDims = [100, 100];
-                case 3 
-                    gridDims = [20, 20, 20];
-                otherwise 
-                    gridDims = ones(1, d) * 10;
-            end
-            fprintf("       d = %i.\n", d)
-        end
-        fprintf('       |\n')
-        fprintf('   -----\n')
-    % Found gridDims
-    else
-        gridDims = expParams.gridDims;
-        d = numel(gridDims);
-        fprintf("   gridDims:")
-        disp(gridDims)
-    end
-    fprintf('   |\n')
-    fprintf("Initializing random experiment with gridDims:");
-    disp(gridDims)
+if ~isfield(expParams,"rho0") || ~IsAllReal(expParams.rho0) || isempty(expParams.rho0) || ...
+        (~isempty(d) && ~isequal(ArrayDim(expParams.rho0), d))
+    fprintf("rho0 - Either no or wrong value for the matrix of initial density.\n")
+    fprintf("Initializing random experiment.\n\n");
     rho = []; % we will set the initial density later as a random vector
 % Found rho0
 else
-    rho = expParams.rho0;
+    rho = double(expParams.rho0);
+    if isrow(rho)
+        rho = rho.'; % Accept any vector input but work with column vectors
+    end
     if isvector(rho)
         gridDims = numel(rho);
     else
@@ -178,77 +191,124 @@ else
     end
     d = numel(gridDims);
     rho = reshape(rho, numel(rho), 1); % make it into vector
-    fprintf("rho0 accepted, gridDims:");
+    fprintf("rho0 accepted, d = %i, gridDims:", d);
     disp(gridDims)
 end
+
+% Grid dimensions (if not inferred)
+if isempty(gridDims)
+    if ~isfield(expParams, "gridDims") || ~isvector(expParams.gridDims) || ...
+            ~IsAllPosInteger(expParams.gridDims)
+        fprintf("gridDims - Either no or wrong value for the grid dimensions.\n") 
+        fprintf("   |\n")
+        gridDims = [];
+        % Set later after d
+    else
+        gridDims = double(expParams.gridDims(:).'); % Make it row vector
+        d = numel(gridDims);
+        fprintf("d = %i, gridDims:", d)
+        disp(gridDims)
+    end
+end
+
+% Dimension (if not inferred)
+if isempty(d)
+    if ~isfield(expParams,"d") || ~isscalar(expParams.d) || ~IsAllPosInteger(expParams.d)
+        fprintf("   d - Either no or wrong value for the dimension.\n")
+        d = 1;                  % default dimension of the space
+        fprintf("   Setting d = %i.\n", d);
+    else
+        d = double(expParams.d);
+        fprintf("   d = %i.\n", d)
+    end
+end
+
+% Set defaul gridDims
+if isempty(gridDims)
+    switch d
+        case 1 
+            gridDims = 10000;
+        case 2 
+            gridDims = [100, 100];
+        case 3 
+            gridDims = [20, 20, 20];
+        otherwise 
+            gridDims = ones(1, d) * 10;
+    end
+    fprintf("   |")
+    fprintf("Setting gridDims:")
+    disp(gridDims)
+end
+
+% Set default domainDims
+if isempty(domainDims)
+    domainDims = ones(1, d);    % default domainDims
+end
+volume = prod(domainDims);
 
 % Grid point count
 N = prod(gridDims);
 
-% Domain dimensions
-if ~isfield(expParams,"domainDims") || ~isfloat(expParams.domainDims) || ...
-        any(expParams.domainDims <= 0) || ~isequal(size(expParams.domainDims), size(gridDims))
-    fprintf("Either no or wrong value for the domain dimensions 'domainDims'.\n")
-    domainDims = ones(size(gridDims));           % default domain domainDims
-    fprintf("Setting domainDims:")
-    disp(domainDims)
-else 
-    domainDims = expParams.domainDims;
-    fprintf("domainDims:")
-    disp(domainDims)
-end
-
-% Domain volume
-volume = prod(domainDims);
-
 % Initial fluctuations
-if ~isfield(expParams,"maxInitFlucts") || ~isfloat(expParams.maxInitFlucts) || ...
-        expParams.maxInitFlucts <= 0 || ~isscalar(expParams.L)
-    fprintf("Either no or wrong value for the maximal initial fluctuations 'maxInitFlucts'.\n")
+if ~isfield(expParams, "maxInitFlucts") || ~isscalar(expParams.maxInitFlucts) || ...
+        ~IsAllPosReal(expParams.maxInitFlucts)
+    fprintf("maxInitFlucts - Either no or wrong value for the maximal initial fluctuations.\n")
     maxInitFlucts = 1e-3;           % default maximal initial fluctuations
-    fprintf("Setting maxInitFlucts = %.3d.\n\n", maxInitFlucts)
+    fprintf("Setting maxInitFlucts = %.3e.\n\n", maxInitFlucts)
 else 
-    maxInitFlucts = expParams.maxInitFlucts;
-    fprintf("maxInitFlucts = %.3d\n\n", maxInitFlucts)
+    maxInitFlucts = double(expParams.maxInitFlucts);
+    fprintf("maxInitFlucts = %.3e\n\n", maxInitFlucts)
 end
 
-% Setting random initial density
-if isempty(rho)
-    flucts = makeFluctsSmooth(maxInitFlucts, gridDims);
-    rho = 1 / volume + reshape(flucts, [N, 1]); % it is density, so integral must be 1
-    % flucts = makeFlucts(maxInitFlucts, gridDims);
-    % rho = 1 / volume + flucts; % it is density, so integral must be 1
+% Initial history of density
+if ~isempty(rho)
+    if ~isfield(expParams,"rhoInitHist") || ~IsAllReal(expParams.rhoInitHist) || ...
+            ~isequal(size(expParams.rhoInitHist, 1:d), gridDims) || ...
+            ~isequal(size(expParams.rhoInitHist, d+1), 0)
+        fprintf("rhoInitHist - Either no or wrong value for the matrix of initial densities.\n")
+        rhoHist = [];  % default initial history
+        %rhoHist = genRhoInitHist(maxInitFlucts, rho, stepDelay);  % default initial history
+        fprintf("Initializing experiment with random initial density history.\n\n")
+    else
+        rhoHist = double(expParams.rhoInitHist);
+        rhoHist = reshape(rhoHist, [N, size(expParams.rhoInitHist, d+1)]); % make it into columns of a matrix
+        fprintf("rhoInitHist accepted.\n\n")
+    end
+else % It does not make sense to have a history for unknown initial conditions
+    rhoHist = [];
+    fprintf("rhoHist ignored, since 'rho0' was not specified.\n\n")
 end
 
 %----------------------------------MODEL------------------------------------
 
 % Interaction radius
-if ~isfield(expParams,"intRad") || ~isnumeric(expParams.intRad) || expParams.intRad < 0
-    fprintf("Either no or wrong value for the interaction radius 'intRad'.\n")
+if ~isfield(expParams, "intRad") || ~isscalar(expParams.intRad) || ...
+        ~IsAllPosReal(expParams.intRad)
+    fprintf("intRad - Either no or wrong value for the interaction radius.\n")
     intRad = getIntRad(d);
-    fprintf("Setting intRad = %.3d\n\n", intRad)
+    fprintf("Setting intRad = %.3e\n\n", intRad)
 else
-    intRad = expParams.intRad;
-    fprintf("intRad = %.3d\n\n", intRad)
+    intRad = double(expParams.intRad);
+    fprintf("intRad = %.3e\n\n", intRad)
 end
 
 % Response decay
-if ~isfield(expParams,"rd") || ~isnumeric(expParams.rd) || ...
-        ~isscalar(expParams.rd)
-    fprintf("Either no or wrong value for the response decay 'rd'.\n")
+if ~isfield(expParams, "rd") || ~isscalar(expParams.rd) || ~IsAllReal(expParams.rd)
+    fprintf("rd - Either no or wrong value for the response decay.\n")
     rd = 1;
-    fprintf("Setting rd = %.3d\n\n", rd)
+    fprintf("Setting rd = %.3e\n\n", rd)
 else
-    rd = expParams.rd;
-    fprintf("rd = %.3d\n\n", rd)
+    rd = double(expParams.rd);
+    fprintf("rd = %.3e\n\n", rd)
 end
 
 % Boundary conditions
-if ~isfield(expParams,"boundConds") || ~isstring(expParams.boundConds) || ...
-        ~isscalar(expParams.boundConds)
-    fprintf("Either no or wrong value for the boundary conditions 'boundConds'.\n")
+definedBoundConds = ["NoBoundary", "Periodic", "Reflective"];
+if ~isfield(expParams, "boundConds") || ~isscalar(expParams.boundConds) || ...
+        ~isstring(expParams.boundConds) || ~ismember(expParams.boundConds, definedBoundConds)     
+    fprintf("boundConds - Either no or wrong value for the boundary conditions.\n")
     boundConds = "Periodic";    % default boundary conditions
-    fprintf("Setting boundary conditions to '%s'.\n\n", boundConds)
+    fprintf("Setting boundConds = '%s'.\n\n", boundConds)
 else
     boundConds = expParams.boundConds;
     fprintf("boundConds: '%s'.\n\n", boundConds)
@@ -257,149 +317,221 @@ end
 %------------------------------TIME-&-DELAY---------------------------------
 
 % Time step length
-if ~isfield(expParams,"dt") || ~isfloat(expParams.dt) || expParams.dt <= 0 || ...
-        ~isscalar(expParams.dt)
-    fprintf("Either no or wrong value for the time step length 'dt'.\n")
+if ~isfield(expParams, "dt") || ~isscalar(expParams.dt) || ~IsAllPosReal(expParams.dt)
+    fprintf("dt - Either no or wrong value for the time step length.\n")
     dt = 1e-3;                  % default time step length
-    fprintf("Setting dt = %.3d\n\n", dt)
+    fprintf("Setting dt = %.3e\n\n", dt)
 else
-    dt = expParams.dt;
-    fprintf("dt = %.3d\n\n", dt)
+    dt = double(expParams.dt);
+    fprintf("dt = %.3e\n\n", dt)
 end
 
 % Step count
-if ~isfield(expParams,"stepCount") || ~IsInteger(expParams.stepCount) || ...
-        expParams.stepCount < 0 || ~isscalar(expParams.stepCount)
-    fprintf("Either no or wrong value for the number of time steps 'stepCount'.\n")
-    if ~isfield(expParams,"T") || ~isfloat(expParams.T) || expParams.T <= 0 || ...
-        ~isscalar(expParams.T)
-        fprintf("Either no or wrong value for the total simulation time 'T'.\n")
+if ~isfield(expParams, "stepCount") || ~isscalar(expParams.stepCount) || ...
+        ~IsAllPosInteger(expParams.stepCount)
+    if ~isfield(expParams,"T") || ~isscalar(expParams.T) || ~IsAllPosReal(expParams.T)
+        fprintf("stepCount (T) - Either no or wrong value for both the number of time steps" + ...
+            " and the total simulation time.\n")
         stepCount = 2000;                    % default number of time steps
-        fprintf("Setting stepCount = %i (T = %.3d).\n\n", stepCount, stepCount * dt)
+        fprintf("Setting stepCount = %i (T = %.3e).\n\n", stepCount, stepCount * dt)
     else
-        stepCount = round(expParams.T / dt);
+        stepCount = round(double(expParams.T) / dt);
+        if stepCount == 0
+            stepCount = 1;
+        end
         T = stepCount * dt;
-        fprintf("T = %.3d (stepCount = %i).\n\n", T, stepCount)
+        fprintf("T = %.3e (stepCount = %i).\n\n", T, stepCount)
     end
 else
-    stepCount = expParams.stepCount;
-    fprintf("stepCount = %i (T = %.3d).\n\n", stepCount, stepCount * dt)
+    stepCount = double(expParams.stepCount);
+    fprintf("stepCount = %i (T = %.3e).\n\n", stepCount, stepCount * dt)
 end
 
 % Step delay
-if ~isfield(expParams,"stepDelay") || ~IsInteger(expParams.stepDelay) || ...
-        expParams.stepDelay < 0 || ~isscalar(expParams.stepDelay)
-    fprintf("Either no or wrong value for the step delay 'stepDelay'.\n")
-    if ~isfield(expParams,"tau") || ~isfloat(expParams.tau) || expParams.tau < 0 || ...
-        ~isscalar(expParams.tau)
-        fprintf("Either no or wrong value for the delay 'tau'.\n")
-        d = expParams.d;
-        switch d
-            case 1 
-                stepDelay = 90;
-            case 2 
-                stepDelay = 30;
-            case 3 
-                stepDelay = 10;
-            otherwise 
-                stepDelay = 0;
+if isempty(rhoHist) % = wrong or no rhoInitHist input
+
+    if ~isfield(expParams, "stepDelay") || ~isscalar(expParams.stepDelay) || ...
+            ~IsAllNonnegInteger(expParams.stepDelay)
+
+        if ~isfield(expParams, "tau") || ~isscalar(expParams.tau) || ...
+                ~IsAllNonnegReal(expParams.tau)
+            fprintf("stepDelay (tau) - Either no or wrong value for both the step delay" + ...
+                " and the real time delay.\n")
+            stepDelay = getStepDelay(d);                    % default stepDelay
+            fprintf("Setting stepDelay = %i (tau = %.3e).\n\n", stepDelay, stepDelay * dt)
+        else
+            stepDelay = round(double(expParams.tau) / dt);
+            tau = stepDelay * dt;
+            fprintf("tau = %.3e (stepDelay = %i).\n\n", tau, stepDelay)
         end
-        fprintf("Setting stepDelay = %i (tau = %.3d).\n\n", stepDelay, stepDelay * dt)
+
     else
-        stepDelay = round(expParams.tau / dt);
-        tau = stepDelay * dt;
-        fprintf("tau = %.3d (stepDelay = %i).\n\n", tau, stepDelay)
+        stepDelay = double(expParams.stepDelay);
+        fprintf("stepDelay: %i (tau = %.3e).\n\n", stepDelay, stepDelay * dt)
     end
+% We got correct rhoInitHist
 else
-    stepDelay = expParams.stepDelay;
-    fprintf("stepDelay: %i (tau = %.3d).\n\n", stepDelay, stepDelay * dt)
+    stepDelay = size(rhoHist, 2); % it got reshaped earlier
+    fprintf("Inferring step delay from 'rhoInitHist': stepDelay = %i (tau = %.3e).\n\n", ...
+        stepDelay, stepDelay * dt)
 end
 
-% Initial history of density
-if ~isfield(expParams,"rhoInitHist") || ~isfloat(expParams.rhoInitHist) || ...
-        ~isequal(size(expParams.rhoInitHist), [gridDims, stepDelay])
-    fprintf("Either no or wrong value for the matrix of initial densities 'rhoInitHist'.\n")
-    rhoHist = genRhoInitHistSmooth(maxInitFlucts, rho, gridDims, stepDelay);  % default initial history
-    %rhoHist = genRhoInitHist(maxInitFlucts, rho, stepDelay);  % default initial history
-    fprintf("Initializing experiment with random initial density history.\n\n")
-else
-    rhoHist = reshape(expParams.rhoInitHist, [N, stepDelay]); % make it into columns of a matrix
-    fprintf("rhoInitHist accepted.\n\n")
+% Make default rhoInitHist
+if isempty(rhoHist)
+    % Make default rho
+    if isempty(rho)
+        rho = ones(N, 1);
+        rhoHist = genRhoInitHistSmooth(maxInitFlucts, rho, gridDims, stepDelay + 1);
+        rhoHist = reshape(rhoHist, [N, stepDelay + 1]);
+        rho = rhoHist(:,1);
+        rhoHist = rhoHist(:,2:end);
+    else
+        rhoHist = genRhoInitHistSmooth(maxInitFlucts, rho, gridDims, stepDelay);
+        rhoHist = reshape(rhoHist, [N, stepDelay]);
+    end
 end
 
 %----------------------------------USER-------------------------------------
 
-% Step plot mod
-if ~isfield(expParams,"stepPlotMod") || ~IsInteger(expParams.stepPlotMod) || ...
-        ((expParams.stepPlotMod <= 0) && expParams.stepPlotMod ~= -1 && expParams.stepPlotMod ~= -2) || ...
-        ~isscalar(expParams.stepPlotMod)
-    fprintf("Either no or wrong value for the step plot mod 'stepPlotMod'.\n")
-    switch d
-        case 1
-            stepPlotMod = 2;  
-        case 2
-            stepPlotMod = 4;  
-        case 3
-            stepPlotMod = 8;  
-        otherwise
-            stepPlotMod = -1;
+% Plot only for supported dimensions
+if d <= 3
+
+    % Step plot mod
+    if ~isfield(expParams,"stepPlotMod") || ~isscalar(expParams.stepPlotMod) || ...
+            ~IsAllModInteger(expParams.stepPlotMod)
+        fprintf("stepPlotMod - Either no or wrong value for the step plot mod.\n")
+        stepPlotMod = getStepPlotMod(d);
+        fprintf("Setting stepPlotMod = %i.\n\n", stepPlotMod)
+    else
+        stepPlotMod = expParams.stepPlotMod;
+        fprintf("stepPlotMod: %i.\n\n", stepPlotMod)
     end
-    fprintf("Setting step plot mod to %i.\n\n", stepPlotMod)
+
+    % Plot aggregation
+    if ~isfield(expParams, "plotLastAgg") || ~isscalar(expParams.plotLastAgg) || ...
+            ~islogical(expParams.plotLastAgg)
+        if stepPlotMod > 0
+            plotLastAgg = true;
+        else
+            plotLastAgg = false;
+        end
+    else
+        plotLastAgg = expParams.plotLastAgg;
+    end
+
 else
-    stepPlotMod = expParams.stepPlotMod;
-    fprintf("stepPlotMod: %i.\n\n", stepPlotMod)
+    stepPlotMod = -1;
+    plotLastAgg = false;
+    fprintf("Dimension larger than 3 detected. Forcing stepPlotMod = %i, plotLastAgg = %i.\n\n", stepPlotMod, plotLastAgg)
 end
 
 % Step record mod
-if ~isfield(expParams,"stepRecMod") || ~IsInteger(expParams.stepRecMod) || ... 
-        (expParams.stepRecMod <= 0 && expParams.stepRecMod ~= -1) || ...
-        ~isscalar(expParams.stepRecMod)
-    fprintf("Either no or wrong value for the step record mod 'stepRecMod'.\n")
+if ~isfield(expParams,"stepRecMod") || ~isscalar(expParams.stepRecMod) || ...
+        ~IsAllModInteger(expParams.stepRecMod) 
+    fprintf("stepRecMod - Either no or wrong value for the step record mod.\n")
     stepRecMod = -1;  % default step record mod
-    fprintf("Setting step record mod to %i.\n\n", stepRecMod)
+    fprintf("Setting stepRecMod = %i.\n\n", stepRecMod)
 else
     stepRecMod = expParams.stepRecMod;
     fprintf("stepRecMod: %i.\n\n", stepRecMod)
 end
 
+% Record initial step
+if ~isfield(expParams, "recInitStep") || ~isscalar(expParams.recInitStep) || ...
+        ~islogical(expParams.recInitStep)
+    if stepRecMod > 0
+        recInitStep = true;
+    else
+        recInitStep = false;
+    end
+else
+    recInitStep = expParams.recInitStep;
+end
+
+% Construct matrices
+if ~isfield(expParams, "A") || ~IsAllReal(expParams.A) || ...
+        ~isequal(size(expParams.A), [N,N]) || ...
+        ~isfield(expParams,"distM") || ~IsAllNonnegReal(expParams.distM) || ...
+        ~isequal(size(expParams.distM), [N,N])
+    constrMats = true;
+else
+    constrMats = false;
+end
+
+% Video path
+if ~isfield(expParams, "videoPath") || ~isscalar(expParams.videoPath) || ...
+        ~isstring(expParams.videoPath) || strlength(expParams.videoPath) == 0
+    videoPath = [];
+else
+    videoPath = expParams.videoPath;
+end
+
+% Wait for conformation
+if ~isfield(expParams, "waitForConf") || ~isscalar(expParams.waitForConf) || ...
+        ~islogical(expParams.waitForConf)
+    waitForConf = true;
+else
+    waitForConf = expParams.waitForConf;
+end
+
 
 %---------------------------------------------------------------------------
 %---------------------------------------------------------------------------
 %---------------------------------------------------------------------------
 
 
-if ~isfield(expParams, "waitForConf") || expParams.waitForConf == true
-    fprintf("----------------------------------\n\n")
-    fprintf("Press space to start the simulation.\n\n")
+if waitForConf
+    fprintf(outputDivider())
+    fprintf("Press any key to confirm input.\n\n")
     pause
 end
 
 
 % Set auxiliary variables -------------------------------------------------
 
-fprintf("----------------------------------\n\n")
-fprintf("Preparing variables.\n\n")
+fprintf(outputDivider())
+
+fprintf("Preparing inner variables.\n\n")
 
 % Coefficient to access history
 histCoeff = stepDelay;
 
-maxPlot = 1;
-
 % Setup VideoWriter if the simulation is recorded
 recordVideo = false;
-if isfield(expParams,"recordVideoPath") && isstring(expParams.recordVideoPath)
-    recordVideo = true;
-    vidWriter = VideoWriter(sprintf("%s.avi", expParams.recordVideoPath));
-    frameTime = stepPlotMod * dt;
-    vidWriter.FrameRate = 1 / frameTime;
-    open(vidWriter)
+if ~isempty(videoPath)
+    if stepPlotMod > 0
+        fprintf("Making the video of the plot at %s.\n\n", expParams.videoPath)
+        recordVideo = true;
+        vidWrit = VideoWriter(sprintf("%s.avi",expParams.videoPath));
+        frameTime = stepPlotMod * dt;
+        vidWrit.FrameRate = 1 / frameTime;
+        open(vidWrit)
+    else
+        fprintf("NO video recording since there is NO plotting.\n\n")
+    end
+else
+    fprintf("NO video recording.\n\n")
 end
 
 % Step length
 dDim = domainDims ./ gridDims;
 
+maxPlot = 0;
+
+% Make new figure if simulation is plotted and plot initial densisy
+if stepPlotMod > 0
+    figure
+    plotSimStep(rho, rhoHist(:,histCoeff), 0)
+end
+
 
 % Set output variables ----------------------------------------------------
+
+
+fprintf(outputDivider())
+
+fprintf("Preparing output variables.\n\n")
+
 
 % Auxiliary function to determine the count of to be recorded steps
 function count = getRecCount(module)
@@ -417,12 +549,14 @@ end
 rhoRecCount = getRecCount(stepRecMod);
 
 % Setup to record initial step
-if isfield(expParams,"recInitStep") && expParams.recInitStep == true
-    rhoRecCount = rhoRecCount + 1; % this is used later
+if recInitStep
+    fprintf("Recording initial step.\n\n")
+    rhoRecCount = rhoRecCount + 1; % this is used later, so we update it to match how many steps we record
     rhoRec = zeros([N, rhoRecCount]);
     rhoRec(:,1) = rho;
     rhoRecIndex = 2;
 else 
+    fprintf("NOT recording initial step.\n\n")
     rhoRec = zeros([N, rhoRecCount]);
     rhoRecIndex = 1;
 end
@@ -430,17 +564,16 @@ end
 
 % Pre-calculations --------------------------------------------------------
 
-fprintf("----------------------------------\n\n")
+fprintf(outputDivider())
 
-if ~isfield(expParams,"A") || ~isfloat(expParams.A) || ~isequal(size(expParams.A), [N,N]) || ...
-        ~isfield(expParams,"distM") || ~isfloat(expParams.distM) || ~isequal(size(expParams.distM), [N,N])
-    fprintf("Either no or wrong value for either the discretization matrix 'A' or the distance matrix 'distM'.\n")
+if constrMats
+    fprintf("A, distM - Either no or wrong value for either the discretization matrix or the distance matrix.\n")
     fprintf("Constructing default discretization and distance matrices.\n")
     fprintf("(This can take some time for larger systems and higher dimensions, so it is advised to precalculate the matrices.)\n\n")
-    [A, distM] = makeFPMatricesAIOpt(gridDims, boundConds, domainDims, makeStencil(d, gridDims));
+    [A, distM] = makeFPMatricesOpt(gridDims, boundConds, domainDims, makeStencil(d, gridDims));
 else
-    A = expParams.A;
-    distM = expParams.distM;
+    A = double(expParams.A);
+    distM = double(expParams.distM);
     fprintf("'A' & 'distM' accepted.\n\n");
 end
 
@@ -458,64 +591,49 @@ dbv = discretizedBallVolume(intRadTol, dDim);
 W = sparse(double(distM < intRadTol));   % strict cutoff, robust near multiples of dx
 W = W / dbv;
 
-%sum(W,"all") / N
-%spy(W)
 
-% Make new figure if simulation is plotted and plot initial density
-if stepPlotMod > 0
-    figure
-    plotSimStep(rho, rhoHist(:,histCoeff), 0)
-end
+%---------------------------------------------------------------------------
+%---------------------------------------------------------------------------
+%---------------------------------------------------------------------------
+
+
+fprintf(outputDivider())
+fprintf("Starting the simulation")
+printTitle()
+fprintf(".\n\n")
 
 
 % Solve for t = 1:stepCount -----------------------------------------------
-
-fprintf("----------------------------------\n\n")
-fprintf("Starting the simulation")
-if isfield(expParams,"expTitle") && isstring(expParams.expTitle) && isscalar(expParams.expTitle)
-    fprintf(", title: %s", expParams.expTitle)
-end
-fprintf(".\n\n")
+% This loop calculates the step t from the step t-1 -----------------------
 
 for t = 1:stepCount
     
-    if stepDelay > 0
-        rhoDelayed = rhoHist(:,histCoeff);
+    rhoDelayed = rhoHist(:,histCoeff);
 
-        % Store present rho to the rho history
-        rhoHist(:,histCoeff) = rho;
+    % Store present rho to the rho history
+    rhoHist(:,histCoeff) = rho;
 
-        % Update hist coeff by -1
-        histCoeff = mod(histCoeff - 2, stepDelay) + 1;
-    else
-        rhoDelayed = rho;
-    end
+    % Update hist coeff by -1
+    histCoeff = mod(histCoeff - 2, stepDelay) + 1;
 
     % Calculate G
     WConvRhoDelayed = W * rhoDelayed;
-    G_sqrd = 1 / 2 * exp(-rd * WConvRhoDelayed) .^ 2;
+    G_sqrd = volume / 2 * exp(-rd * WConvRhoDelayed) .^ 2;
 
     % Create the matrix for semi-implicit finite differences
     M = speye(N,N) + dt * A .* (G_sqrd.');
     
-    %calculate the L^2 norm
-    %E(t)=sum((rho.^2).*G);
-    
     % Make the step
     rho = M \ rho;
     
-    %print the total mass to check mass conservation
-    %sum(rho)
-        
-    
     % Plot
-    if stepPlotMod > 0 && mod(t,stepPlotMod) == 0
+    if stepPlotMod > 0 && mod(t, stepPlotMod) == 0
         plotSimStep(rho, rhoDelayed, t)
     end
 
     % Record simulation step
     if t < stepCount % Last step is recorded after this loop (since we could get mod(stepCount,stepRecMod) ~= 0, so we record it specially after the loop)
-        if stepRecMod ~= -1 && mod(t,stepRecMod) == 0
+        if stepRecMod ~= -1 && mod(t, stepRecMod) == 0
             rhoRec(:,rhoRecIndex) = rho;
             rhoRecIndex = rhoRecIndex + 1;
         end
@@ -567,7 +685,12 @@ function plotSimStep(rho, rhoDelayed, t)
 end
 
 
-% Finish
+%--------------------------------------------------------------------------
+%--------------------------------------------------------------------------
+%--------------------------------------------------------------------------
+
+
+% Finish ------------------------------------------------------------------
 
 % Close video writer
 if recordVideo
@@ -576,8 +699,7 @@ end
 
 % Record final simulation step (the final step might not have been possible to record in the loop)
 rhoRec(:,end) = rho;
-indices = num2cell(gridDims);
-rhoRec = reshape(rhoRec, indices{:}, rhoRecCount);
+rhoRec = reshape(rhoRec, [gridDims, rhoRecCount]);
 
 % Record last history of rho - just permute the history
 % The coefficient was decreased in the final step, so we need to increase it back
@@ -588,15 +710,20 @@ end
 permutation = [lastIndex:stepDelay, 1:lastIndex-1];
 rhoHist = rhoHist(:,permutation);
 
-fprintf("----------------------------------\n\n")
+fprintf(outputDivider())
 fprintf("Simulation")
-if isfield(expParams,"expTitle") && isstring(expParams.expTitle) && isscalar(expParams.expTitle)
-    fprintf(" titled %s", expParams.expTitle)
-end
+printTitle()
 fprintf(" finished.\n\n")
 
+function printTitle()
+    if isfield(expParams,"expTitle") && isstring(expParams.expTitle) && isscalar(expParams.expTitle)
+    fprintf(" titled %s", expParams.expTitle)
+    end
+end
+
+% Plot aggregation
 if stepPlotMod ~= -2
-    fprintf("----------------------------------\n\n")
+    fprintf(outputDivider())
     fprintf("Plotting agregation groups.\n\n")
     plotSimStep(rho, rhoHist(:, stepDelay), stepCount) % TODO - agregation detection
 end

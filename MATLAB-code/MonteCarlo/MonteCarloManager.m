@@ -22,7 +22,7 @@ end
 for i_exp = 1:length(expParamsArray)
     % Disable plotting, if not specified
     if ~isfield(expParamsArray(i_exp), "stepPlotMod") || isempty(expParamsArray(i_exp).stepPlotMod)
-        expParamsArray(i_exp).stepPlotMod = -2;
+        expParamsArray(i_exp).stepPlotMod = -1;
     end
     % Disable waiting for confirmation, if not specified
     if ~isfield(expParamsArray(i_exp), "waitForConf") || isempty(expParamsArray(i_exp).waitForConf)

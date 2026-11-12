@@ -16,7 +16,7 @@ function [expsParams, folderPathFuncHandle, filePostfixFuncHandle] = makeStabByR
             ...% No stepDelay
             ...% No initial history controll
             "waitForConf", false, ...% FIXED
-            "stepPlotMod", -2, ...% FIXED
+            "stepPlotMod", -1, ...% FIXED
             ...% No agent marking
             ...% No color for agent marking
             "stepRecMod", ceil(stepCount/min(stepCount, 100)), ...% FIXED - record either all or up to 100 steps
