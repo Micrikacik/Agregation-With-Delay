@@ -5,9 +5,13 @@ function [rhoRec, rhoHist] = FokkerPlanck(expParams)
 %---------------------------------------------------------------------------
 %
 % INPUT:
-%   expParams (structure) - struct, which can contain following fields, if an important
-%       field is missing, default value is used. If no input is required,
-%       set to '{}'.
+%
+%   This function can be called with no parameters to run default
+%   experiment. To specify experiment parameters (and other things), enter
+%   a struct as an input with fields described below:
+%
+%   expParams (structure) - struct, which can contain following fields. 
+%       If some field is missing, default value is used.
 %
 %       POSSIBLE FIELDS:
 %
@@ -17,68 +21,100 @@ function [rhoRec, rhoHist] = FokkerPlanck(expParams)
 %           random generator settings.
 %
 %       SPACE & INITIAL CONDITIONS:
-%       rho0 (positive float COLUMN vector) - vector of initial discretized density. 
-%           Alternatively, set number of grid points 'gridPointCount'.
-%       gridPointCount (integer scalar) - number of points at which we
-%           disretize the differential equation using uniform step.
-%       L (positive float) - length of the simulation interval [0, L].
+%       domainDims (positive float vector) - dimensions of the domain. 
+%           Domain is a rectangle which "starts" at vector 0 and "ends" at 
+%           vector 'domainDims'.
+%           Alternatively, set 'd'. In that case 'ones(1,d)' will be set as
+%           dimensions of the domain
+%       rho0 (positive float array) - array of discretized initial density.
+%           Input it 'as is', meaning for d-dimensional space this array
+%           should have d dimensions.
+%           Alternatively, set the grid dimensions 'gridDims' or just the 
+%           dimension 'd'. In that case, this initial density and its
+%           history will be a constant with random "continuous"
+%           fluctuations, which are at most 'maxInitFlucts'.
+%       rhoInitHist (float array) - initial history of the matrix of 
+%           discretized density used in calculation of the first few 
+%           iterations.
+%           rhoInitHist(:,:,...,:,i) - density array i steps into the past, 
+%           where 1 <= i <= stepDelay.
+%       gridDims (integer vector) - number of rectangles in each dimension
+%           at which we disretize the differential equation using a uniform 
+%           step.
+%           Alternative to 'rho0'.
 %       maxInitFlucts (positive float scalar) - if either 'rho0'
 %           'rhoInitHist' is not provided, this value is used to generate
-%           them with random fluctuations, which are at most 'maxInitFlucts'.
+%           them as a constant with random "continuous" fluctuations, which
+%           are at most 'maxInitFlucts'.
 %
 %       MODEL:
 %       intRad (positive float) - radius of interactions between agents.
+%       rd (float) - response decay. The 'a' in 'G(theta) = exp(-a*theta)'.
 %       boundConds (string) - type of the boundary conditions.
 %           Must be one of the following strings:
 %               "Periodic"
 %               "Reflective"
-%       rd (positive float scalar) - it is a multiplier 'a' in
-%           the response function G(-a*theta)
 %
 %       TIME & DELAY:
 %       dt (positive float) - time step length.
 %       stepCount (positive integer) - number of time steps.
-%       T (positive float) - total time of the simulation, alternative to 
-%           'stepCount', which will be 'stepCount = round(T / dt)', if not provided.
-%       stepDelay (nonnegative integer) - number of steps used to delay the simulation.
-%       tau (nonnegative float) - delay in the simulation, alternative to 
-%           'stepDelay', which will be 'stepDelay = round(tau / dt)', if not provided.
-%       rhoInitHist (float matrix) - initial history of the matrix of positions used in
-%           calculation of the first few iterations.
-%           rhoInitHist(:,i) - density vector i steps into the past, 
-%           where 1 <= i <= stepDelay.
+%           Alternatively, set the total time 'T'. In that case,
+%           'round(T / dt)' will be set as step count. If the rounded
+%           value is 0, then step count will be 1.
+%       T (positive float) - total time of the simulation.
+%           Alternative to 'stepCount'.
+%       stepDelay (positive integer) - number of steps used to delay 
+%           the simulation. Must be at least 1 for the discretization to be
+%           applicable.
+%           Alternative to 'xInitHist'.
+%           Alternatively, set the (real time) delay 'tau'. In that case,
+%           'round(tau / dt)' will be set as step delay. If the rounded
+%           value is 0, then step delay will be 1.
+%       tau (positive float) - delay in the simulation.
+%           Alternative to 'stepDelay'.
 %
 %       USER:
-%       waitForConf (logical scalar) - if true, then wait for user to start the simulation.
-%       stepPlotMod (positive integer or -1 or -2) - simulation plots the 
-%           t-th step if the reminder of t divided by stepRecMod is zero. 
+%       waitForConf (logical) - if true, then wait for the user to start 
+%           the simulation.
+%       stepPlotMod (positive integer or -1) - simulation plots the t-th 
+%           step if the reminder of 't' divided by 'stepPlotMod' is 0. 
 %           The plots are shown in movie-like sense. 
-%           If stepPlotMod = -1, then only the last step is plotted.
-%           If stepPlotMod = -2, then no steps are plotted.
+%           If 'stepPlotMod > 0', then the initial conditions are plotted
+%           as well.
+%           Plottingg is not available for 'd > 3'.
+%       plotLastAgg (logical) - if true, then the last step of the
+%           computation is plotted together with detected clusters.
+%           If no value is specified and 'stepPlotMod > 0', then it will
+%           be set 'plotLastAgg = true'.
 %       stepRecMod (positive integer or -1) - simulation records the t-th 
-%           density vector if the reminder of t divided by 'stepRecMod' is zero. 
-%           Last density vector is always recorded.
-%           If stepRecMod = -1, then only the last vector is recorded.
-%       recInitStep (logical scalar) - if true, then the initial density
-%           vector rho0 is recorded to rhoRec(:,1).
-%       expTitle (string) - title to be printed before the experiment begins
-%       recordVideoPath (string) - if provided, script records the plotted
+%           array of densoty if the reminder of 't' divided by 'stepRecMod'
+%           is 0. 
+%           Last array is always recorded.
+%           If 'stepRecMod = -1', then only the last array is recorded.
+%       recInitStep (logical) - if true, then the initial density array
+%           'rho0' is recorded to 'rhoRec(:,:,...,:,1)'.
+%           If no value is specified and 'stepRecMod > 0', then it will
+%           be set 'recInitStep = true'.
+%       expTitle (string) - title to be printed before the experiment 
+%           begins, and after the experiment ends.
+%       videoPath (string) - if provided, script records the plotted
 %           positions as video onto this given path. This path should
 %           include the filename, but NOT the file extension. It will be
 %           saved as '.avi'.
 %
 % OUTPUT:
-%   rhoRec (float matrix) - 2 dimensional matrix of all recorded density 
-%       vectors. Its dimensions are [gridPointCount, count], where count 
+%   rhoRec (float array) - 'd+1' dimensional array of all recorded density 
+%       vectors. Its dimensions are [gridDims, count], where 'count' 
 %       is the final count of recorded matrices. 
-%       rhoRec(:,end) is always the density vector at the end of the simulation. 
-%       If input stepRecMod = 0, then rhoRec(:,1) is the vector of initial
-%       density.
-%   rhoHist (float matrix) - 2 dimensional matrix of the last history of
+%       rhoRec(:,:,...,:,end) is always the density array at the end of the
+%       computation. 
+%       If 'recInitStep = true', then rhoRec(:,:,...,:,1) is the array of 
+%       initial density.
+%   rhoHist (float matrix) - 'd+1' dimensional array of the last history of
 %       densities, which still affect the following simulation steps.
-%       Its dimensions are [gridPointCount, stepDelay]. 
-%       It can be directly plugged in as an input to this function to 
-%       continue in the experiment.
+%       Its dimensions are [gridDims, stepDelay]. 
+%       It can be directly plugged in as an input to this function together
+%       with rhoRec(:,:,...,:,end) to continue in the experiment.
 
 arguments
     expParams (1,1) struct = struct()
@@ -173,7 +209,7 @@ else
 end
 
 % Initial density, grid dimensions and dimension
-if ~isfield(expParams,"rho0") || ~IsAllReal(expParams.rho0) || isempty(expParams.rho0) || ...
+if ~isfield(expParams,"rho0") || ~IsAllNonnegReal(expParams.rho0) || isempty(expParams.rho0) || ...
         (~isempty(d) && ~isequal(ArrayDim(expParams.rho0), d))
     fprintf("rho0 - Either no or wrong value for the matrix of initial density.\n")
     fprintf("Initializing random experiment.\n\n");
@@ -198,9 +234,14 @@ end
 % Grid dimensions (if not inferred)
 if isempty(gridDims)
     if ~isfield(expParams, "gridDims") || ~isvector(expParams.gridDims) || ...
-            ~IsAllPosInteger(expParams.gridDims)
-        fprintf("gridDims - Either no or wrong value for the grid dimensions.\n") 
-        fprintf("   |\n")
+            ~IsAllPosInteger(expParams.gridDims) || ...
+            (~isempty(d) && ~isequal(length(expParams.gridDims), d))
+        if (~isempty(d) && ~isequal(length(expParams.gridDims), d))
+            fprintf("gridDims - Wrong length of the vector of grid dimensions for given dimension d = %i.\n", d)
+        else
+            fprintf("gridDims - Either no or wrong value for the grid dimensions.\n")
+            fprintf("   |\n")
+        end
         gridDims = [];
         % Set later after d
     else
@@ -221,6 +262,7 @@ if isempty(d)
         d = double(expParams.d);
         fprintf("   d = %i.\n", d)
     end
+    fprintf("   |\n")
 end
 
 % Set defaul gridDims
@@ -235,7 +277,6 @@ if isempty(gridDims)
         otherwise 
             gridDims = ones(1, d) * 10;
     end
-    fprintf("   |")
     fprintf("Setting gridDims:")
     disp(gridDims)
 end
@@ -262,12 +303,12 @@ end
 
 % Initial history of density
 if ~isempty(rho)
-    if ~isfield(expParams,"rhoInitHist") || ~IsAllReal(expParams.rhoInitHist) || ...
+    if ~isfield(expParams,"rhoInitHist") || ~IsAllNonnegReal(expParams.rhoInitHist) || ...
             ~isequal(size(expParams.rhoInitHist, 1:d), gridDims) || ...
-            ~isequal(size(expParams.rhoInitHist, d+1), 0)
+            isempty(expParams.rhoInitHist) || ...
+            ~isequal(ArrayDim(expParams.rhoInitHist), d + 1)
         fprintf("rhoInitHist - Either no or wrong value for the matrix of initial densities.\n")
         rhoHist = [];  % default initial history
-        %rhoHist = genRhoInitHist(maxInitFlucts, rho, stepDelay);  % default initial history
         fprintf("Initializing experiment with random initial density history.\n\n")
     else
         rhoHist = double(expParams.rhoInitHist);
@@ -351,16 +392,19 @@ end
 if isempty(rhoHist) % = wrong or no rhoInitHist input
 
     if ~isfield(expParams, "stepDelay") || ~isscalar(expParams.stepDelay) || ...
-            ~IsAllNonnegInteger(expParams.stepDelay)
+            ~IsAllPosInteger(expParams.stepDelay)
 
         if ~isfield(expParams, "tau") || ~isscalar(expParams.tau) || ...
-                ~IsAllNonnegReal(expParams.tau)
+                ~IsAllPosReal(expParams.tau)
             fprintf("stepDelay (tau) - Either no or wrong value for both the step delay" + ...
                 " and the real time delay.\n")
             stepDelay = getStepDelay(d);                    % default stepDelay
             fprintf("Setting stepDelay = %i (tau = %.3e).\n\n", stepDelay, stepDelay * dt)
         else
             stepDelay = round(double(expParams.tau) / dt);
+            if stepDelay == 0
+                stepDelay = 1;
+            end
             tau = stepDelay * dt;
             fprintf("tau = %.3e (stepDelay = %i).\n\n", tau, stepDelay)
         end
@@ -380,7 +424,7 @@ end
 if isempty(rhoHist)
     % Make default rho
     if isempty(rho)
-        rho = ones(N, 1);
+        rho = ones(N, 1) / volume; % integral should be 1
         rhoHist = genRhoInitHistSmooth(maxInitFlucts, rho, gridDims, stepDelay + 1);
         rhoHist = reshape(rhoHist, [N, stepDelay + 1]);
         rho = rhoHist(:,1);
@@ -419,6 +463,7 @@ if d <= 3
         plotLastAgg = expParams.plotLastAgg;
     end
 
+% Force no plotting
 else
     stepPlotMod = -1;
     plotLastAgg = false;
@@ -582,6 +627,10 @@ tol = 100 * sum(eps(domainDims)) / d;
 
 intRadTol = intRad - tol;
 
+if intRadTol <= 0
+    error("Too small intRad.")
+end
+
 % Normalization multiplier
 dbv = discretizedBallVolume(intRadTol, dDim);
 
@@ -618,7 +667,7 @@ for t = 1:stepCount
 
     % Calculate G
     WConvRhoDelayed = W * rhoDelayed;
-    G_sqrd = volume / 2 * exp(-rd * WConvRhoDelayed) .^ 2;
+    G_sqrd = 1 / 2 * exp(-rd * volume * WConvRhoDelayed) .^ 2;
 
     % Create the matrix for semi-implicit finite differences
     M = speye(N,N) + dt * A .* (G_sqrd.');
@@ -680,7 +729,7 @@ function plotSimStep(rho, rhoDelayed, t)
     f = getframe;
 
     if recordVideo
-        writeVideo(vidWriter, f)
+        writeVideo(vidWrit, f)
     end
 end
 
@@ -694,7 +743,7 @@ end
 
 % Close video writer
 if recordVideo
-    close(vidWriter)
+    close(vidWrit)
 end
 
 % Record final simulation step (the final step might not have been possible to record in the loop)
@@ -721,8 +770,9 @@ function printTitle()
     end
 end
 
-% Plot aggregation
-if stepPlotMod ~= -2
+% TODO: the real aggregation calculation and plot
+% Plot aggregation 
+if plotLastAgg
     fprintf(outputDivider())
     fprintf("Plotting agregation groups.\n\n")
     plotSimStep(rho, rhoHist(:, stepDelay), stepCount) % TODO - agregation detection

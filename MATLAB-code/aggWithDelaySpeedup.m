@@ -5,8 +5,13 @@ function [xRec, thetaRec, thetaOccur, xHist, rngSetts] = aggWithDelaySpeedup(exp
 %--------------------------------------------------------------------------
 %
 % INPUT:
+%
+%   This function can be called with no parameters to run default
+%   experiment. To specify experiment parameters (and other things), enter
+%   a struct as an input with fields described below:
+%
 %   expParams (structure) - struct, which can contain following fields. 
-%       If an important field is missing, default value is used.
+%       If some field is missing, default value is used.
 %
 %       POSSIBLE FIELDS:
 %
@@ -20,7 +25,7 @@ function [xRec, thetaRec, thetaOccur, xHist, rngSetts] = aggWithDelaySpeedup(exp
 %           it returned as initial conditions and random generator settings.
 %
 %       SPACE & INITIAL CONDITIONS:
-%       domainDims (positive float ROW vector) - dimensions of the domain 
+%       domainDims (positive float vector) - dimensions of the domain 
 %           of the simulation, i.e., dimensions of the box, in which the 
 %           agents move. This box "starts" at vector 0 and "ends" at vector
 %           'domainDims'.
@@ -32,7 +37,7 @@ function [xRec, thetaRec, thetaOccur, xHist, rngSetts] = aggWithDelaySpeedup(exp
 %           Alternatively, set the dimension 'd' and the number of
 %           agents 'N'. In that case, uniformly random initial positions
 %           will be selected.
-%       xInitHist (float matrix) - initial history of the matrix of 
+%       xInitHist (float array) - initial history of the matrix of 
 %           positions used in the calculation of the first few iterations.
 %           x(:,:,i) - position matrix i steps into the past
 %           Alternatively, set the dimension 'd', the number of
@@ -79,13 +84,13 @@ function [xRec, thetaRec, thetaOccur, xHist, rngSetts] = aggWithDelaySpeedup(exp
 %       waitForConf (logical) - if true, then wait for the user to start 
 %           the simulation.
 %       stepPlotMod (positive integer or -1) - simulation plots the t-th 
-%           step if the reminder of 't' divided by stepPlotMod is 0. 
+%           step if the reminder of 't' divided by 'stepPlotMod' is 0. 
 %           The plots are shown in movie-like sense. 
 %           If 'stepPlotMod > 0', then the initial conditions are plotted
 %           as well.
 %           Plottingg is not available for 'd > 3'.
-%       plotLastAgg (logical) - if true, then the last step of the simulation
-%           is plotted together with detected clusters.
+%       plotLastAgg (logical) - if true, then the last step of the 
+%           simulation is plotted together with detected clusters.
 %           If no value is specified and 'stepPlotMod > 0', then it will
 %           be set 'plotLastAgg = true'.
 %       markAgents (positive integer vector) - vector containing indices
@@ -479,6 +484,7 @@ if d <= 3
         plotLastAgg = expParams.plotLastAgg;
     end
 
+% Force no plotting
 else
     stepPlotMod = -1;
     plotLastAgg = false;
