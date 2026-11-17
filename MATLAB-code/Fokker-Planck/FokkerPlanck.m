@@ -15,11 +15,6 @@ function [rhoRec, rhoHist] = FokkerPlanck(expParams)
 %
 %       POSSIBLE FIELDS:
 %
-%       RNG:
-%       rngSeed (nonnegative integer) - rng seed to replicate experiments.
-%       rngSetts (struct) - struct returned by the rng function, containing
-%           random generator settings.
-%
 %       SPACE & INITIAL CONDITIONS:
 %       domainDims (positive float vector) - dimensions of the domain. 
 %           Domain is a rectangle which "starts" at vector 0 and "ends" at 
@@ -31,8 +26,13 @@ function [rhoRec, rhoHist] = FokkerPlanck(expParams)
 %           should have d dimensions.
 %           Alternatively, set the grid dimensions 'gridDims' or just the 
 %           dimension 'd'. In that case, this initial density and its
-%           history will be a constant with random "continuous"
+%           history will be a constant with random "smooth"
 %           fluctuations, which are at most 'maxInitFlucts'.
+%           Note that if 'rhoInitHist' is not provided, then random
+%           fluctuations of magnitude 'rhoInitHist' will be added to 'rho0'
+%           when generating 'rhoInitHist' from it, to have a same level of
+%           fluctuations across history to current moment. This also makes
+%           "smooth" fluctuations possible.
 %       rhoInitHist (float array) - initial history of the matrix of 
 %           discretized density used in calculation of the first few 
 %           iterations.
@@ -42,10 +42,22 @@ function [rhoRec, rhoHist] = FokkerPlanck(expParams)
 %           at which we disretize the differential equation using a uniform 
 %           step.
 %           Alternative to 'rho0'.
+%
+%       RNG & RANDOM INITIAL CONDITIONS:
+%       rngSeed (nonnegative integer) - rng seed to replicate experiments.
+%       Random numbers are used when generating default 'rho0' or
+%       'rhoInitHist'.
+%       rngSetts (struct) - struct returned by the rng function, containing
+%           random generator settings.
 %       maxInitFlucts (positive float scalar) - if either 'rho0'
 %           'rhoInitHist' is not provided, this value is used to generate
-%           them as a constant with random "continuous" fluctuations, which
+%           them as a constant with random "smooth" fluctuations, which
 %           are at most 'maxInitFlucts'.
+%           Note that the fluctuations will be added to 'rho0' if it was
+%           specified without specifying 'rhoInitHist'.
+%       smoothNoise (logical scalar) - determines wether to use custom 
+%           smooth noise generator when creating initial history of
+%           densities.
 %
 %       MODEL:
 %       intRad (positive float) - radius of interactions between agents.
@@ -53,7 +65,7 @@ function [rhoRec, rhoHist] = FokkerPlanck(expParams)
 %       boundConds (string) - type of the boundary conditions.
 %           Must be one of the following strings:
 %               "Periodic"
-%               "Reflective"
+%               "Reflective" (not implemented yet)
 %
 %       TIME & DELAY:
 %       dt (positive float) - time step length.
@@ -170,26 +182,6 @@ end
 
 % Set or initialize experiment parameters
 
-%---------------------------------RNG---------------------------------------
-
-% Random generator settings for continuation of experiment
-if ~isfield(expParams,"rngSetts") || ~isscalar(expParams.rngSetts) || ...
-        ~isstruct(expParams.rngSetts)
-    % We do not have all settings, so we check just the seed
-    % Rng seed for replicable experiment
-    if ~isfield(expParams,"rngSeed") || ~isscalar(expParams.rngSeed) || ...
-            ~IsAllNonnegInteger(expParams.rngSeed)
-        fprintf("rngSeed - Either no or wrong value for the rng seed.\n")
-        fprintf("Randomness is uncontrolled.\n\n")
-    else
-        rng(expParams.rngSeed)
-        fprintf("rngSeed = %i.\n\n", expParams.rngSeed)
-    end
-else
-    rng(expParams.rngSetts)
-    fprintf("rngSetts accepted.\n\n")
-end
-
 %-----------------------SPACE-&-INITIAL-CONDITIONS------------------------
 
 gridDims = [];
@@ -204,12 +196,12 @@ if ~isfield(expParams, "domainDims") || ~isvector(expParams.domainDims) || ...
 else    
     domainDims = double(expParams.domainDims(:).');
     d = length(domainDims);
-    fprintf("domainDims:")
+    fprintf("d = %i, domainDims:", d)
     disp(domainDims)
 end
 
 % Initial density, grid dimensions and dimension
-if ~isfield(expParams,"rho0") || ~IsAllNonnegReal(expParams.rho0) || isempty(expParams.rho0) || ...
+if ~isfield(expParams, "rho0") || ~IsAllNonnegReal(expParams.rho0) || isempty(expParams.rho0) || ...
         (~isempty(d) && ~isequal(ArrayDim(expParams.rho0), d))
     fprintf("rho0 - Either no or wrong value for the matrix of initial density.\n")
     fprintf("Initializing random experiment.\n\n");
@@ -234,26 +226,34 @@ end
 % Grid dimensions (if not inferred)
 if isempty(gridDims)
     if ~isfield(expParams, "gridDims") || ~isvector(expParams.gridDims) || ...
-            ~IsAllPosInteger(expParams.gridDims) || ...
-            (~isempty(d) && ~isequal(length(expParams.gridDims), d))
-        if (~isempty(d) && ~isequal(length(expParams.gridDims), d))
-            fprintf("gridDims - Wrong length of the vector of grid dimensions for given dimension d = %i.\n", d)
-        else
-            fprintf("gridDims - Either no or wrong value for the grid dimensions.\n")
-            fprintf("   |\n")
-        end
+            ~IsAllPosInteger(expParams.gridDims)
+        fprintf("gridDims - Either no or wrong value for the grid dimensions.\n")
         gridDims = [];
         % Set later after d
     else
         gridDims = double(expParams.gridDims(:).'); % Make it row vector
-        d = numel(gridDims);
-        fprintf("d = %i, gridDims:", d)
-        disp(gridDims)
+        % We might have got d from before, so it must match
+        if ~isempty(d) && ~isequal(length(gridDims), d)
+            fprintf("gridDims - Wrong length of the vector of grid dimensions for given dimension d = %i.\n", d)
+            gdl = length(gridDims);
+            if gdl < d
+                gridDims = [gridDims, ones(1, d - gdl)];
+            else
+                gridDims = gridDims(1:d);
+            end
+            fprintf("Resizing gridDims:")
+            disp(gridDims)
+        else
+            d = numel(gridDims);
+            fprintf("d = %i, gridDims:", d)
+            disp(gridDims)
+        end
     end
 end
 
 % Dimension (if not inferred)
 if isempty(d)
+    fprintf("   |\n")
     if ~isfield(expParams,"d") || ~isscalar(expParams.d) || ~IsAllPosInteger(expParams.d)
         fprintf("   d - Either no or wrong value for the dimension.\n")
         d = 1;                  % default dimension of the space
@@ -290,23 +290,11 @@ volume = prod(domainDims);
 % Grid point count
 N = prod(gridDims);
 
-% Initial fluctuations
-if ~isfield(expParams, "maxInitFlucts") || ~isscalar(expParams.maxInitFlucts) || ...
-        ~IsAllPosReal(expParams.maxInitFlucts)
-    fprintf("maxInitFlucts - Either no or wrong value for the maximal initial fluctuations.\n")
-    maxInitFlucts = 1e-3;           % default maximal initial fluctuations
-    fprintf("Setting maxInitFlucts = %.3e.\n\n", maxInitFlucts)
-else 
-    maxInitFlucts = double(expParams.maxInitFlucts);
-    fprintf("maxInitFlucts = %.3e\n\n", maxInitFlucts)
-end
-
 % Initial history of density
 if ~isempty(rho)
     if ~isfield(expParams,"rhoInitHist") || ~IsAllNonnegReal(expParams.rhoInitHist) || ...
             ~isequal(size(expParams.rhoInitHist, 1:d), gridDims) || ...
-            isempty(expParams.rhoInitHist) || ...
-            ~isequal(ArrayDim(expParams.rhoInitHist), d + 1)
+            isempty(expParams.rhoInitHist) || ndims(expParams.rhoInitHist) > d + 1
         fprintf("rhoInitHist - Either no or wrong value for the matrix of initial densities.\n")
         rhoHist = [];  % default initial history
         fprintf("Initializing experiment with random initial density history.\n\n")
@@ -344,7 +332,7 @@ else
 end
 
 % Boundary conditions
-definedBoundConds = ["NoBoundary", "Periodic", "Reflective"];
+definedBoundConds = "Periodic"; %["Periodic", "Reflective"];
 if ~isfield(expParams, "boundConds") || ~isscalar(expParams.boundConds) || ...
         ~isstring(expParams.boundConds) || ~ismember(expParams.boundConds, definedBoundConds)     
     fprintf("boundConds - Either no or wrong value for the boundary conditions.\n")
@@ -392,13 +380,13 @@ end
 if isempty(rhoHist) % = wrong or no rhoInitHist input
 
     if ~isfield(expParams, "stepDelay") || ~isscalar(expParams.stepDelay) || ...
-            ~IsAllPosInteger(expParams.stepDelay)
+            ~IsAllPosInteger(expParams.stepDelay) || isequal(expParams.stepDelay, 0)
 
         if ~isfield(expParams, "tau") || ~isscalar(expParams.tau) || ...
                 ~IsAllPosReal(expParams.tau)
             fprintf("stepDelay (tau) - Either no or wrong value for both the step delay" + ...
                 " and the real time delay.\n")
-            stepDelay = getStepDelay(d);                    % default stepDelay
+            stepDelay = getStepDelay(d, true);                    % default stepDelay
             fprintf("Setting stepDelay = %i (tau = %.3e).\n\n", stepDelay, stepDelay * dt)
         else
             stepDelay = round(double(expParams.tau) / dt);
@@ -420,18 +408,59 @@ else
         stepDelay, stepDelay * dt)
 end
 
-% Make default rhoInitHist
+%-----------------RANDOM-INITIAL-DENSITY-&-HISTORY-------------------------
+
+% Make default rhoInitHist and fluctuate rho
 if isempty(rhoHist)
+
+    % Random generator settings for continuation of experiment
+    if ~isfield(expParams,"rngSetts") || ~isscalar(expParams.rngSetts) || ...
+            ~isstruct(expParams.rngSetts)
+        % We do not have all settings, so we check just the seed
+        % Rng seed for replicable experiment
+        if ~isfield(expParams,"rngSeed") || ~isscalar(expParams.rngSeed) || ...
+                ~IsAllNonnegInteger(expParams.rngSeed)
+            fprintf("rngSeed - Either no or wrong value for the rng seed.\n")
+            fprintf("Randomness is uncontrolled.\n\n")
+        else
+            rng(expParams.rngSeed)
+            fprintf("rngSeed = %i.\n\n", expParams.rngSeed)
+        end
+    else
+        rng(expParams.rngSetts)
+        fprintf("rngSetts accepted.\n\n")
+    end
+    
+    % Initial fluctuations
+    if ~isfield(expParams, "maxInitFlucts") || ~isscalar(expParams.maxInitFlucts) || ...
+            ~IsAllPosReal(expParams.maxInitFlucts)
+        fprintf("maxInitFlucts - Either no or wrong value for the maximal initial fluctuations.\n")
+        maxInitFlucts = 1e-3;           % default maximal initial fluctuations
+        fprintf("Setting maxInitFlucts = %.3e.\n\n", maxInitFlucts)
+    else 
+        maxInitFlucts = double(expParams.maxInitFlucts);
+        fprintf("maxInitFlucts = %.3e\n\n", maxInitFlucts)
+    end
+
+    % Smooth noise
+    if ~isfield(expParams, "smoothNoise") || ~isscalar(expParams.smoothNoise) || ...
+            ~islogical(expParams.smoothNoise)
+        smoothNoise = false;
+    else
+        smoothNoise = expParams.smoothNoise;
+    end
+
     % Make default rho
     if isempty(rho)
         rho = ones(N, 1) / volume; % integral should be 1
-        rhoHist = genRhoInitHistSmooth(maxInitFlucts, rho, gridDims, stepDelay + 1);
-        rhoHist = reshape(rhoHist, [N, stepDelay + 1]);
-        rho = rhoHist(:,1);
-        rhoHist = rhoHist(:,2:end);
+    end
+    centralFreqs = 2 * [domainDims, (stepDelay + 1) * dt];
+    if smoothNoise
+        fprintf("Duplicating 'rho0' into 'rhoInitHist' and adding SMOOTH noise.\n\n")
+        [rho, rhoHist] = genRhoInitHistSmooth(maxInitFlucts, rho, gridDims, stepDelay, centralFreqs);
     else
-        rhoHist = genRhoInitHistSmooth(maxInitFlucts, rho, gridDims, stepDelay);
-        rhoHist = reshape(rhoHist, [N, stepDelay]);
+        fprintf("Duplicating 'rho0' into 'rhoInitHist' and adding NON-SMOOTH noise.\n\n")
+        [rho, rhoHist] = genRhoInitHist(maxInitFlucts, rho, stepDelay);
     end
 end
 
@@ -498,9 +527,12 @@ if ~isfield(expParams, "A") || ~IsAllReal(expParams.A) || ...
         ~isequal(size(expParams.A), [N,N]) || ...
         ~isfield(expParams,"distM") || ~IsAllNonnegReal(expParams.distM) || ...
         ~isequal(size(expParams.distM), [N,N])
+    fprintf("A, distM - Either no or wrong value for either the discretization matrix or the distance matrix.\n")
     constrMats = true;
+    fprintf("Matricies will be constructed before the experiment begins.\n\n")
 else
     constrMats = false;
+    fprintf("A, distM accepted.\n\n")
 end
 
 % Video path
@@ -509,6 +541,23 @@ if ~isfield(expParams, "videoPath") || ~isscalar(expParams.videoPath) || ...
     videoPath = [];
 else
     videoPath = expParams.videoPath;
+end
+
+% Setup VideoWriter if the simulation is recorded
+recordVideo = false;
+if ~isempty(videoPath)
+    if stepPlotMod > 0
+        fprintf("Making the video of the plot at '%s.avi'.\n\n", expParams.videoPath)
+        recordVideo = true;
+        vidWrit = VideoWriter(sprintf("%s.avi",expParams.videoPath));
+        frameTime = stepPlotMod * dt;
+        vidWrit.FrameRate = 1 / frameTime;
+        open(vidWrit)
+    else
+        fprintf("NO video recording since there is NO plotting.\n\n")
+    end
+else
+    fprintf("NO video recording.\n\n")
 end
 
 % Wait for conformation
@@ -541,27 +590,22 @@ fprintf("Preparing inner variables.\n\n")
 % Coefficient to access history
 histCoeff = stepDelay;
 
-% Setup VideoWriter if the simulation is recorded
-recordVideo = false;
-if ~isempty(videoPath)
-    if stepPlotMod > 0
-        fprintf("Making the video of the plot at %s.\n\n", expParams.videoPath)
-        recordVideo = true;
-        vidWrit = VideoWriter(sprintf("%s.avi",expParams.videoPath));
-        frameTime = stepPlotMod * dt;
-        vidWrit.FrameRate = 1 / frameTime;
-        open(vidWrit)
-    else
-        fprintf("NO video recording since there is NO plotting.\n\n")
-    end
-else
-    fprintf("NO video recording.\n\n")
-end
-
 % Step length
 dDim = domainDims ./ gridDims;
 
 maxPlot = 0;
+if d == 1
+    grid1D = ((1:gridDims).' - 0.5) * dDim;
+end
+if d <= 2
+    h1 = [];
+    if d == 1
+        h2 = [];
+    end
+end
+if recordVideo
+    frameSize = [];
+end
 
 % Make new figure if simulation is plotted and plot initial densisy
 if stepPlotMod > 0
@@ -612,12 +656,11 @@ end
 fprintf(outputDivider())
 
 if constrMats
-    fprintf("A, distM - Either no or wrong value for either the discretization matrix or the distance matrix.\n")
-    fprintf("Constructing default discretization and distance matrices.\n")
+    fprintf("Constructing default discretization matrix 'A' and the distance matrix 'distM'.\n")
     fprintf("(This can take some time for larger systems and higher dimensions, so it is advised to precalculate the matrices.)\n\n")
-    [A, distM] = makeFPMatricesOpt(gridDims, boundConds, domainDims, makeStencil(d, gridDims));
+    [A, distM] = makeFPMatricesOpt(gridDims, boundConds, domainDims, makeStencil(gridDims, domainDims));
 else
-    A = double(expParams.A);
+    A = sparse(double(expParams.A));
     distM = double(expParams.distM);
     fprintf("'A' & 'distM' accepted.\n\n");
 end
@@ -634,12 +677,24 @@ end
 % Normalization multiplier
 dbv = discretizedBallVolume(intRadTol, dDim);
 
+if ~isscalar(dbv) || ~isfinite(dbv) || dbv <= 0
+    error("dvb <= 0, but it should be always at least 1?.")
+end
+
 % Pre-calculate the kernel W, normalized such that its integral is 1
 % Remark: Don't use simple 'W = (dist <  intRad)' since this gives issues
 % with roundoff errors (staircasing) when intRad is a multiple of dx
 W = sparse(double(distM < intRadTol));   % strict cutoff, robust near multiples of dx
 W = W / dbv;
 
+% This works only for periodic BCs
+if norm(sum(W, 2) - 1) > 1/N
+    error("Bad W normalization.")
+end
+
+I = speye(N,N);
+
+clear distM
 
 %---------------------------------------------------------------------------
 %---------------------------------------------------------------------------
@@ -670,7 +725,7 @@ for t = 1:stepCount
     G_sqrd = 1 / 2 * exp(-rd * volume * WConvRhoDelayed) .^ 2;
 
     % Create the matrix for semi-implicit finite differences
-    M = speye(N,N) + dt * A .* (G_sqrd.');
+    M = I - dt * A .* (G_sqrd.');
     
     % Make the step
     rho = M \ rho;
@@ -694,16 +749,24 @@ function plotSimStep(rho, rhoDelayed, t)
     title(sprintf("T = %d", t))
     switch d
         case 1
-            grid1D = ((1:gridDims).' - 0.5) * dDim;
-            clf
-            hold on
-            plot(grid1D, rhoDelayed)
-            plot(grid1D, rho)
-            hold off
+            if isempty(h1) || isempty(h2)
+                clf
+                hold on
+                h1 = plot(grid1D, rhoDelayed);
+                h2 = plot(grid1D, rho);
+                hold off
+                legend("rho delayed", "rho")
+            else
+                set(h1, 'YData', rhoDelayed);
+                set(h2, 'YData', rho);
+            end
             axis([0, domainDims, 0, maxPlot])
-            legend("rho delayed", "rho")
         case 2
-            imagesc(reshape(rho, gridDims))
+            if isempty(h1)
+                h1 = imagesc(reshape(rho, gridDims));
+            else
+                set(h1, "CData", reshape(rho, gridDims))
+            end
             set(gca, 'YDir', 'normal');
             clim([0, maxPlot])
             colorbar("Ticks", linspace(0, maxPlot, 5))
@@ -712,12 +775,12 @@ function plotSimStep(rho, rhoDelayed, t)
             gridY = ((1:gridDims(2)) - 0.5) * dDim(2);
             gridZ = ((1:gridDims(3)) - 0.5) * dDim(3);
             rho50prc = mean(rho);
-            rho95prc = prctile(rho,95);
+            rho90prc = prctile(rho,90);
             clf
             colormap("turbo")
             isosurface(gridX, gridY, gridZ, reshape(rho, gridDims), rho50prc);
             isosurface(gridX, gridY, gridZ, reshape(rho, gridDims), 1);
-            isosurface(gridX, gridY, gridZ, reshape(rho, gridDims), rho95prc);
+            isosurface(gridX, gridY, gridZ, reshape(rho, gridDims), rho90prc);
             clim([0, maxPlot])
             colorbar("Ticks", linspace(0, maxPlot, 5))
         otherwise
@@ -729,6 +792,10 @@ function plotSimStep(rho, rhoDelayed, t)
     f = getframe;
 
     if recordVideo
+        if isempty(frameSize)
+            frameSize = size(f.cdata, [1,2]);
+        end
+        f.cdata = imresize(f.cdata, frameSize);
         writeVideo(vidWrit, f)
     end
 end
@@ -775,7 +842,7 @@ end
 if plotLastAgg
     fprintf(outputDivider())
     fprintf("Plotting agregation groups.\n\n")
-    plotSimStep(rho, rhoHist(:, stepDelay), stepCount) % TODO - agregation detection
+    %plotSimStep(rho, rhoHist(:, stepDelay), stepCount) % TODO - agregation detection
 end
 
 

@@ -26,13 +26,8 @@ function noise = randSmoothFFT(gridDims, centralFreqs)
 %       (periodic only in the user defined directions, see 'centralFreqs').
 
 arguments
-    gridDims double {mustBeVector, mustBeInteger, mustBePositive, mustBeFinite, mustBeReal}
-    centralFreqs double {mustBeVector, mustBeNonnegative, mustBeFinite, mustBeReal}
-end
-
-% In 1D add a second dimension for simple noise creation
-if isscalar(gridDims)
-    gridDims = [gridDims, 1];
+    gridDims double {mustBeVector, mustBeInteger, mustBePositive, mustBeFinite, mustBeReal, mustBeNonempty}
+    centralFreqs double {mustBeVector, mustBeNonnegative, mustBeFinite, mustBeReal} = ones(size(gridDims ))
 end
 
 nd = numel(gridDims);
@@ -43,7 +38,7 @@ if ndf > nd
     centralFreqs = centralFreqs(1:nd);
 end
 if ndf < nd
-    centralFreqs = [centralFreqs(:); ones(nd - ndf, 1)];
+    centralFreqs = [centralFreqs(:), ones(1, nd - ndf)];
 end
 
 % Compute dimensions of the noise we use FFT on
@@ -54,18 +49,24 @@ cflt1_idxs = (centralFreqs < 1) & ~cfe0_idxs;
 noiseDims(cflt1_idxs) = round(gridDims(cflt1_idxs) ./ centralFreqs(cflt1_idxs));
 
 % Construct frequency coordinates
-freq = cell(1, nd);
+freq_sqrd = cell(1, nd);
 for d = 1:nd
     n = noiseDims(d);
     f = [0:floor((n-1)/2), -floor(n/2):-1];
-    freq{d} = f.^2;
+    freq_sqrd{d} = f.^2;
 end
 
-% Construct radial frequency (i.e. each cell contains its distance from (0,0))
+% Construct squared radial frequency 
+% (i.e. each array element contains its distance squared from (0,0))
 F = cell(1, nd);
-[F{:}] = ndgrid(freq{:});
+[F{:}] = ndgrid(freq_sqrd{:});
 
-freqAddup = zeros(noiseDims);
+if nd == 1
+    freqAddup = zeros(noiseDims, 1);
+else
+    freqAddup = zeros(noiseDims);
+end
+
 for d = 1:nd
     c = centralFreqs(d);
     if c == 0
@@ -78,25 +79,27 @@ end
 H = 1 ./ (abs(freqAddup - 1) + 1);
 
 % Make noise
-whiteNoise = randn(noiseDims);
+if nd == 1
+    whiteNoise = rand(noiseDims, 1);
+else
+    whiteNoise = rand(noiseDims);
+end
+
 
 % Filter frequencies
 noise = real(ifftn(fftn(whiteNoise).*H));
 
 % Normalize
 noise = noise - min(noise, [], "all");
-noiseMax = max(noise, [], "all");
+noiseMax = max(abs(noise), [], "all");
 if noiseMax > 0
     noise = noise ./ noiseMax;
-else
-    noise = zeros(size(noise));
 end
 
 % Expand noise in the constant dimensions
-repeat = gridDims;
-repeat(~cfe0_idxs) = 1;
-
 if ~isequal(noiseDims, gridDims)
+    repeat = gridDims;
+    repeat(~cfe0_idxs) = 1;
     noise = repmat(noise, repeat);
 end
 

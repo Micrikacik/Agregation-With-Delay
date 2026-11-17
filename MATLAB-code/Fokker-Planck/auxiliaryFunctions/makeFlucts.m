@@ -1,4 +1,13 @@
-function [flucts] = makeFlucts(maxFlucts, N)
+function [flucts] = makeFlucts(maxFlucts, gridDims)
 
-flucts = maxFlucts * 2 * (rand(N, 1) - 0.5);
-flucts = flucts - mean(flucts);
+if isscalar(gridDims)
+    flucts = rand(gridDims, 1);
+else 
+    flucts = rand(gridDims);
+end
+
+flucts = flucts - mean(flucts, "all");
+maxf = max(abs(flucts), [], "all");
+if maxf > 0
+    flucts = flucts / maxf * maxFlucts;
+end

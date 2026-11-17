@@ -601,6 +601,23 @@ else
     videoPath = expParams.videoPath;
 end
 
+% Setup VideoWriter if the simulation is recorded
+recordVideo = false;
+if ~isempty(videoPath)
+    if stepPlotMod > 0
+        fprintf("Making the video of the plot at %s.\n\n", expParams.videoPath)
+        recordVideo = true;
+        vidWrit = VideoWriter(sprintf("%s.avi",expParams.videoPath));
+        frameTime = stepPlotMod * dt;
+        vidWrit.FrameRate = 1 / frameTime;
+        open(vidWrit)
+    else
+        fprintf("NO video recording since there is NO plotting.\n\n")
+    end
+else
+    fprintf("NO video recording.\n\n")
+end
+
 % Wait for conformation
 if ~isfield(expParams, "waitForConf") || ~isscalar(expParams.waitForConf) || ...
         ~islogical(expParams.waitForConf)
@@ -637,23 +654,6 @@ histCoeff = stepDelay;
 scatterColors = repmat([0.1,0.6,1],[N,1]); % Unmarked color
 if ~isempty(markColors)
     scatterColors(markAgents,:) = markColors;
-end
-
-% Setup VideoWriter if the simulation is recorded
-recordVideo = false;
-if ~isempty(videoPath)
-    if stepPlotMod > 0
-        fprintf("Making the video of the plot at %s.\n\n", expParams.videoPath)
-        recordVideo = true;
-        vidWrit = VideoWriter(sprintf("%s.avi",expParams.videoPath));
-        frameTime = stepPlotMod * dt;
-        vidWrit.FrameRate = 1 / frameTime;
-        open(vidWrit)
-    else
-        fprintf("NO video recording since there is NO plotting.\n\n")
-    end
-else
-    fprintf("NO video recording.\n\n")
 end
 
 maxPlot = 0;

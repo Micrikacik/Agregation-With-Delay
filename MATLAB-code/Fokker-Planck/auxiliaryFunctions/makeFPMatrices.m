@@ -4,7 +4,7 @@ arguments
     gridDims (1,:) double {mustBeInteger, mustBePositive}
     boundConds (1,1) string = "Periodic"
     domainDims (1,:) double {mustBePositive} = ones(size(gridDims))
-    stencil double = makeStencil(numel(gridDims), gridDims)
+    stencil double = makeStencil(gridDims, domainDims)
 end
 
 if boundConds ~= "Periodic"

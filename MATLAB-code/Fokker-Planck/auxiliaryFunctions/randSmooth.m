@@ -42,7 +42,10 @@ while randCount < minDim / 3
 end
 
 noise = noise - min(noise, [], "all");
-noise = noise ./ max(noise, [], "all");
+maxNoise = max(noise, [], "all");
+if maxNoise > 0
+    noise = noise ./ maxNoise;
+end
 
 
 % function noise = randSmooth(gridDims)

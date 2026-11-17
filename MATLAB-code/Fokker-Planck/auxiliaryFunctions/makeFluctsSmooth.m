@@ -1,5 +1,8 @@
-function flucts = makeFluctsSmooth(maxFlucts, gridDims)
+function flucts = makeFluctsSmooth(maxFlucts, gridDims, centralFreqs)
 
-flucts = randSmooth(gridDims);
-flucts = flucts - mean(flucts);
-flucts = flucts / max(abs(flucts), [], "all") * maxFlucts;
+flucts = randSmoothFFT(gridDims, centralFreqs);
+flucts = flucts - mean(flucts, "all");
+maxf = max(abs(flucts), [], "all");
+if maxf > 0
+    flucts = flucts / maxf * maxFlucts;
+end

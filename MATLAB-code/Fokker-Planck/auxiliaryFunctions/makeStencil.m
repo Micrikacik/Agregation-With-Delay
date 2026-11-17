@@ -1,28 +1,38 @@
-function stencil = makeStencil(d, gridDims)
+function stencil = makeStencil(gridDims, domainDims)
 
-% d - dimension
+% Creates stencil for finite volumes/differences scheme on domain with
+% 'domainDims' discretized by grid with 'gridDims'. Scheme is simple second
+% difference (x(i+1) - 2x(i) + x(i-1)) / dx^2
+
 % gridDims - number of steps in each dimension = [N1, N2, ..., Nd]
+
+d = length(gridDims);
+
+if length(domainDims) ~= d
+    error("Input vectors do not have the same size.")
+end
 
 if d == 1
     stencil = zeros(3,1);
 else
-    stencil = zeros(repmat(3,1,d));
-end
-middle = cell(1,d);
-
-for index = 1:length(middle)
-    middle{index} = 2;
+    stencil = zeros(3*ones(1, d));
 end
 
-gridDimsSqrd = gridDims .^ 2;
+center = cell(1,d);
 
-stencil(middle{:}) = sum(2 * gridDimsSqrd);
+for i = 1:length(center)
+    center{i} = 2;
+end
+
+multip = (gridDims ./ domainDims) .^ 2; % dDims = domainDims ./ gridDims and we divide by it
+
+stencil(center{:}) = sum(-2 * multip);
 
 for dim = 1:d
-    indices = middle;
+    indices = center;
     indices{dim} = indices{dim} + 1;
-    stencil(indices{:}) = -1 * gridDimsSqrd(dim);
-    indices = middle;
+    stencil(indices{:}) = multip(dim);
+    indices = center;
     indices{dim} = indices{dim} - 1;
-    stencil(indices{:}) = -1 * gridDimsSqrd(dim);
+    stencil(indices{:}) = multip(dim);
 end

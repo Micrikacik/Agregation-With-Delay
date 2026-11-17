@@ -1,16 +1,16 @@
 function [A, distM] = makeFPMatricesOpt(gridDims, boundConds, domainDims, stencil)
+
+% THIS FUNCTION WAS MADE BY OPTIMIZING makeFPMAtrices.m USING AI
 %
-% THIS FUNCTION WAS MADE BY OPTIMIZING AUTHORS FUNCTION BY AI TO BE FASTER
-%
-%PREPAREMATRICES_OPTIMIZED Faster equivalent of prepareMatrices.
+% PREPAREMATRICES_OPTIMIZED Faster equivalent of prepareMatrices.
 % MATLAB R2025b. Uses sparse triplet assembly for A and pairwise
 % periodic coordinate differences for distM.
 
 arguments
-    gridDims (1,:) double {mustBeInteger, mustBePositive}
+    gridDims double {mustBeInteger, mustBePositive, mustBeVector}
     boundConds (1,1) string = "Periodic"
-    domainDims (1,:) double {mustBePositive} = ones(size(gridDims))
-    stencil double = makeStencil(numel(gridDims), gridDims)
+    domainDims double {mustBePositive, mustBeVector} = ones(size(gridDims))
+    stencil double = makeStencil(gridDims, domainDims)
 end
 
 if boundConds ~= "Periodic"
@@ -26,9 +26,6 @@ if isscalar(domainDims)
     domainDims = [domainDims, 1];
 end
 
-if length(size(stencil)) ~= length(gridDims)
-    error("Wrong stencil format.");
-end
 if length(domainDims) ~= length(gridDims)
     error("'domainDims' and 'gridDims' do not match.");
 end
@@ -36,6 +33,11 @@ end
 N = prod(gridDims);
 K = numel(stencil);
 stencilDims = size(stencil);
+
+nds = numel(stencilDims);
+if nds < nd
+    stencilDims = [stencilDims, ones(1, nd - nds)];
+end
 
 % Coordinates of all grid points in MATLAB's column-major linear order.
 % We only use 'coords' from this, for quick coordinate conversion.
@@ -57,23 +59,24 @@ end
 
 % Assemble A in one sparse construction. Repeated (row,column) pairs are
 % summed by SPARSE, as in the original repeated updates to A(g_index, j).
-rows = repelem((1:N).', K, 1);
+rows = repelem((1:N).', K, 1); % = [1; 1; ...; 1; 2; ...]
 cols = zeros(size(rows));
 stencilVals = repmat(stencil(:), N, 1); % vectorize stencil and repeat it
 for row_g = 1:N
     % Compute all grid coordinates affected by stecnil around g-th entry of
     % vectorized grid -> (g,g)-th entry of A (in g-th row)
     neighborSubs = mod(coords(row_g, :) + offsets - 1, gridDims) + 1;
+    % Collumns into cell entries to index by them
     neighborCells = num2cell(neighborSubs, 1);
+    % Which part of 'cols' are we filling up, for K elements 'rows' is 'row_g'
     range4row_g = (1:K) + (row_g-1)*K;
-    % Transform the grid coordinate affected by stencil to vectorized
-    % coordnate -> column of A
+    % Transform the grid coordinates affected by stencil to vectorized
+    % coordnates -> columns of A
     cols(range4row_g) = sub2ind(gridDims, neighborCells{:});
 end
 A = sparse(rows, cols, stencilVals, N, N);
 
-% Pairwise periodic distances. This directly computes the same toroidal
-% distance represented by the original shifted distance array.
+% Pairwise periodic distances.
 dDim = domainDims ./ gridDims;
 distM = zeros(N, N);
 for d = 1:nd

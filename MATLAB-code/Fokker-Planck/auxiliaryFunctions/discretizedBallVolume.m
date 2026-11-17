@@ -5,15 +5,14 @@ arguments
     dDim (1,:) double {mustBePositive}
 end
 
-d = numel(dDim);
-
 if isscalar(dDim)
-    grid = zeros([ceil(rad ./ dDim) + 1, 1]);
+    grid = zeros([2 * ceil(rad ./ dDim) + 1, 1]);
 else
-    grid = zeros(2 * ceil(rad ./ dDim) + 1); % might be done more memory effectively
+    grid = zeros(2 * ceil(rad ./ dDim) + 1); 
 end
 
 gridDims = size(grid);
+d = length(gridDims);
 N = prod(gridDims);
 
 indices = cell(1, d);
