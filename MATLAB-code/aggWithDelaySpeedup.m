@@ -630,13 +630,6 @@ end
 %--------------------------------------------------------------------------
 
 
-if waitForConf
-    fprintf(outputDivider())
-    fprintf("Press any key to confirm input.\n\n")
-    pause
-end
-
-
 % Set auxiliary variables -------------------------------------------------
 
 
@@ -753,6 +746,13 @@ end
 %---------------------------------------------------------------------------
 %---------------------------------------------------------------------------
 %---------------------------------------------------------------------------
+
+
+if waitForConf
+    fprintf(outputDivider())
+    fprintf("Press any key to start the simulation.\n\n")
+    pause
+end
 
 
 fprintf(outputDivider())
@@ -962,12 +962,16 @@ thetaOccur = thetaOccur + accumarray(indexes, 1, size(thetaOccur));
 
 % Record last history of x - just permute the history
 % The coefficient was decreased in the final step, so we need to increase it back
-lastIndex = histCoeff + 1; 
-if lastIndex >= stepDelay
-    lastIndex = 1;
+if stepDelay > 0
+    lastIndex = histCoeff + 1; 
+    if lastIndex >= stepDelay
+        lastIndex = 1;
+    end
+    permutation = [lastIndex:stepDelay, 1:lastIndex-1];
+    xHist = xHist(:,:,permutation);
+else
+    xHist = zeros([size(x), 0]);
 end
-permutation = [lastIndex:stepDelay, 1:lastIndex-1];
-xHist = xHist(:,:,permutation);
 
 % Return random generator settings
 rngSetts = rng;

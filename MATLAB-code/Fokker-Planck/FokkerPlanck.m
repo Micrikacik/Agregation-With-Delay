@@ -703,6 +703,13 @@ clear distM
 %---------------------------------------------------------------------------
 
 
+if waitForConf
+    fprintf(outputDivider())
+    fprintf("Press any key to start the simulation.\n\n")
+    pause
+end
+
+
 fprintf(outputDivider())
 fprintf("Starting the simulation")
 printTitle()
