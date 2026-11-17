@@ -62,8 +62,7 @@ function [xRec, thetaRec, thetaOccur, xHist, rngSetts] = aggWithDelaySpeedup(exp
 %       dt (positive float) - time step length.
 %       stepCount (positive integer) - number of time steps.
 %           Alternatively, set the total time 'T'. In that case,
-%           'round(T / dt)' will be set as step count. If the rounded
-%           value is 0, then step count will be 1.
+%           'ceil(T / dt)' will be set as step count.
 %       T (positive float) - total time of the simulation.
 %           Alternative to 'stepCount'.
 %       delayType (string) - type of the delay.
@@ -76,7 +75,7 @@ function [xRec, thetaRec, thetaOccur, xHist, rngSetts] = aggWithDelaySpeedup(exp
 %           the simulation.
 %           Alternative to 'xInitHist'.
 %           Alternatively, set the (real time) delay 'tau'. In that case,
-%           'round(tau / dt)' will be set as step delay.
+%           'ceil(tau / dt)' will be set as step delay.
 %       tau (nonnegative float) - delay in the simulation.
 %           Alternative to 'stepDelay'.
 %
@@ -281,10 +280,10 @@ if isempty(N)
     if ~isfield(expParams,"N") || ~isscalar(expParams.N) || ~IsAllPosInteger(expParams.N)
         fprintf("N - Either no or wrong value for the number of agents.\n")
         N = 400;                % default number of particles
-        fprintf("Setting N = %i.\n", N);
+        fprintf("Setting N = %i.\n\n", N);
     else
         N = double(expParams.N);
-        fprintf("N = %i.\n", N)
+        fprintf("N = %i.\n\n", N)
     end
 end
 
@@ -293,10 +292,10 @@ if isempty(d)
     if ~isfield(expParams,"d") || ~isscalar(expParams.d) || ~IsAllPosInteger(expParams.d)
         fprintf("d - Either no or wrong value for the dimension.\n")
         d = 2;                  % default dimension of the space
-        fprintf("Setting d = %i.\n", d);
+        fprintf("Setting d = %i.\n\n", d);
     else
         d = double(expParams.d);
-        fprintf("d = %i.\n", d)
+        fprintf("d = %i.\n\n", d)
     end
 end
 
@@ -307,6 +306,7 @@ end
 volume = prod(domainDims);
 
 % Initial history of positions
+historyObtained = false;
 if ~isempty(x)
     if ~isfield(expParams, "xInitHist") || ~IsAllReal(expParams.xInitHist) || ...
             size(expParams.xInitHist, 1) ~= N || size(expParams.xInitHist, 2) ~= d || ...
@@ -317,6 +317,7 @@ if ~isempty(x)
         fprintf("Initializing experiment with 'blind motion' initial history.\n\n")
     else
         xHist = double(expParams.xInitHist);
+        historyObtained = true;
         fprintf("xInitHist accepted.\n\n")
     end
 else % It does not make sense to have a history for unknown initial conditions
@@ -388,10 +389,7 @@ if ~isfield(expParams, "stepCount") || ~isscalar(expParams.stepCount) || ...
         stepCount = 2000;                    % default number of time steps
         fprintf("Setting stepCount = %i (T = %.3e).\n\n", stepCount, stepCount * dt)
     else
-        stepCount = round(double(expParams.T) / dt);
-        if stepCount == 0
-            stepCount = 1;
-        end
+        stepCount = ceil(double(expParams.T) / dt);
         T = stepCount * dt;
         fprintf("T = %.3e (stepCount = %i).\n\n", T, stepCount)
     end
@@ -413,7 +411,7 @@ if isempty(xHist) && ndims(xHist) ~= 3 % = wrong or no xInitHist input
             stepDelay = getStepDelay(d);                    % default stepDelay
             fprintf("Setting stepDelay = %i (tau = %.3e).\n\n", stepDelay, stepDelay * dt)
         else
-            stepDelay = round(double(expParams.tau) / dt);
+            stepDelay = ceil(double(expParams.tau) / dt);
             tau = stepDelay * dt;
             fprintf("tau = %.3e (stepDelay = %i).\n\n", tau, stepDelay)
         end
@@ -430,7 +428,7 @@ else
 end
 
 % Make default xInihHist (if wrong or no input)
-if isempty(xHist) && ndims(xHist) ~= 3
+if historyObtained == false
     xHist = genInitHist(x, dt, stepDelay, boundConds, domainDims);
 end
 

@@ -21,7 +21,7 @@ function xInitHist = genInitHist(x, dt, stepDelay, boundConds, domainDims)
 arguments
     x (:,:) double {mustBeFinite, mustBeNonempty, mustBeReal}
     dt (1,1) double {mustBeFinite, mustBeReal, mustBePositive}
-    stepDelay (1,1) double {mustBeFinite, mustBeReal, mustBePositive, mustBeInteger}
+    stepDelay (1,1) double {mustBeFinite, mustBeReal, mustBeNonnegative, mustBeInteger}
     boundConds (1,1) string 
     domainDims (1,:) double {mustBeFinite, mustBeReal, mustBePositive}
 end
@@ -33,6 +33,10 @@ if d ~= length(domainDims)
 end
 
 xInitHist = zeros([N, d, stepDelay]);
+
+if stepDelay == 0
+    return
+end
 
 xInitHist(:,:,1) = x - sqrt(dt) * randn(N, d);    
 

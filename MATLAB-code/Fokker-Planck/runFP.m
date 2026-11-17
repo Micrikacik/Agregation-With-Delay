@@ -1,6 +1,6 @@
 
 if isempty(gcp('nocreate'))
-    parpool;
+    parpool(14);
 end
 
 p = gcp("nocreate");

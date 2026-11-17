@@ -71,18 +71,16 @@ function [rhoRec, rhoHist] = FokkerPlanck(expParams)
 %       dt (positive float) - time step length.
 %       stepCount (positive integer) - number of time steps.
 %           Alternatively, set the total time 'T'. In that case,
-%           'round(T / dt)' will be set as step count. If the rounded
-%           value is 0, then step count will be 1.
+%           'ceil(T / dt)' will be set as step count.
 %       T (positive float) - total time of the simulation.
 %           Alternative to 'stepCount'.
-%       stepDelay (positive integer) - number of steps used to delay 
+%       stepDelay (non-negative integer) - number of steps used to delay 
 %           the simulation. Must be at least 1 for the discretization to be
 %           applicable.
 %           Alternative to 'xInitHist'.
 %           Alternatively, set the (real time) delay 'tau'. In that case,
-%           'round(tau / dt)' will be set as step delay. If the rounded
-%           value is 0, then step delay will be 1.
-%       tau (positive float) - delay in the simulation.
+%           'ceil(tau / dt)' will be set as step delay.
+%       tau (non-negative float) - delay in the simulation.
 %           Alternative to 'stepDelay'.
 %
 %       USER:
@@ -291,16 +289,19 @@ volume = prod(domainDims);
 N = prod(gridDims);
 
 % Initial history of density
+historyObtained = false;
 if ~isempty(rho)
     if ~isfield(expParams,"rhoInitHist") || ~IsAllNonnegReal(expParams.rhoInitHist) || ...
             ~isequal(size(expParams.rhoInitHist, 1:d), gridDims) || ...
-            isempty(expParams.rhoInitHist) || ndims(expParams.rhoInitHist) > d + 1
+            (~isequal(ndims(expParams.rhoInitHist), d + 1) && isempty(expParams.rhoInitHist)) || ...
+            ndims(expParams.rhoInitHist) > d + 1
         fprintf("rhoInitHist - Either no or wrong value for the matrix of initial densities.\n")
         rhoHist = [];  % default initial history
         fprintf("Initializing experiment with random initial density history.\n\n")
     else
         rhoHist = double(expParams.rhoInitHist);
         rhoHist = reshape(rhoHist, [N, size(expParams.rhoInitHist, d+1)]); % make it into columns of a matrix
+        historyObtained = true;
         fprintf("rhoInitHist accepted.\n\n")
     end
 else % It does not make sense to have a history for unknown initial conditions
@@ -364,7 +365,7 @@ if ~isfield(expParams, "stepCount") || ~isscalar(expParams.stepCount) || ...
         stepCount = 2000;                    % default number of time steps
         fprintf("Setting stepCount = %i (T = %.3e).\n\n", stepCount, stepCount * dt)
     else
-        stepCount = round(double(expParams.T) / dt);
+        stepCount = ceil(double(expParams.T) / dt);
         if stepCount == 0
             stepCount = 1;
         end
@@ -377,22 +378,19 @@ else
 end
 
 % Step delay
-if isempty(rhoHist) % = wrong or no rhoInitHist input
+if historyObtained == false % = wrong or no rhoInitHist input
 
     if ~isfield(expParams, "stepDelay") || ~isscalar(expParams.stepDelay) || ...
-            ~IsAllPosInteger(expParams.stepDelay) || isequal(expParams.stepDelay, 0)
+            ~IsAllNonnegInteger(expParams.stepDelay)
 
         if ~isfield(expParams, "tau") || ~isscalar(expParams.tau) || ...
-                ~IsAllPosReal(expParams.tau)
+                ~IsAllNonnegReal(expParams.tau)
             fprintf("stepDelay (tau) - Either no or wrong value for both the step delay" + ...
                 " and the real time delay.\n")
             stepDelay = getStepDelay(d, true);                    % default stepDelay
             fprintf("Setting stepDelay = %i (tau = %.3e).\n\n", stepDelay, stepDelay * dt)
         else
-            stepDelay = round(double(expParams.tau) / dt);
-            if stepDelay == 0
-                stepDelay = 1;
-            end
+            stepDelay = ceil(double(expParams.tau) / dt);
             tau = stepDelay * dt;
             fprintf("tau = %.3e (stepDelay = %i).\n\n", tau, stepDelay)
         end
@@ -411,7 +409,7 @@ end
 %-----------------RANDOM-INITIAL-DENSITY-&-HISTORY-------------------------
 
 % Make default rhoInitHist and fluctuate rho
-if isempty(rhoHist)
+if historyObtained == false
 
     % Random generator settings for continuation of experiment
     if ~isfield(expParams,"rngSetts") || ~isscalar(expParams.rngSetts) || ...
@@ -610,7 +608,11 @@ end
 % Make new figure if simulation is plotted and plot initial densisy
 if stepPlotMod > 0
     figure
-    plotSimStep(rho, rhoHist(:,histCoeff), 0)
+    if stepDelay > 0
+        plotSimStep(rho, rhoHist(:,histCoeff), 0)
+    else
+        plotSimStep(rho, rho, 0)
+    end
 end
 
 
@@ -712,13 +714,17 @@ fprintf(".\n\n")
 
 for t = 1:stepCount
     
-    rhoDelayed = rhoHist(:,histCoeff);
-
-    % Store present rho to the rho history
-    rhoHist(:,histCoeff) = rho;
-
-    % Update hist coeff by -1
-    histCoeff = mod(histCoeff - 2, stepDelay) + 1;
+    if stepDelay > 0
+        rhoDelayed = rhoHist(:,histCoeff);
+    
+        % Store present rho to the rho history
+        rhoHist(:,histCoeff) = rho;
+    
+        % Update hist coeff by -1
+        histCoeff = mod(histCoeff - 2, stepDelay) + 1;
+    else
+        rhoDelayed = rho;
+    end
 
     % Calculate G
     WConvRhoDelayed = W * rhoDelayed;
@@ -819,12 +825,17 @@ rhoRec = reshape(rhoRec, [gridDims, rhoRecCount]);
 
 % Record last history of rho - just permute the history
 % The coefficient was decreased in the final step, so we need to increase it back
-lastIndex = histCoeff + 1; 
-if lastIndex >= stepDelay
-    lastIndex = 1;
+if stepDelay > 0
+    lastIndex = histCoeff + 1; 
+    if lastIndex >= stepDelay
+        lastIndex = 1;
+    end
+    permutation = [lastIndex:stepDelay, 1:lastIndex-1];
+    rhoHist = rhoHist(:,permutation);
+    rhoHist = reshape(rhoHist, [gridDims, rhoRecCount]);
+else
+    rhoHist = zeros([gridDims, 0]);
 end
-permutation = [lastIndex:stepDelay, 1:lastIndex-1];
-rhoHist = rhoHist(:,permutation);
 
 fprintf(outputDivider())
 fprintf("Simulation")
