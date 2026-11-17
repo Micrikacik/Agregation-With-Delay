@@ -832,7 +832,7 @@ if stepDelay > 0
     end
     permutation = [lastIndex:stepDelay, 1:lastIndex-1];
     rhoHist = rhoHist(:,permutation);
-    rhoHist = reshape(rhoHist, [gridDims, rhoRecCount]);
+    rhoHist = reshape(rhoHist, [gridDims, stepDelay]);
 else
     rhoHist = zeros([gridDims, 0]);
 end
